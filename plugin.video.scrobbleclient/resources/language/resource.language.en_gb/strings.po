@@ -119,6 +119,30 @@ msgctxt "#30036"
 msgid "Show progress percentage in labels"
 msgstr ""
 
+msgctxt "#30037"
+msgid "Recommendation languages"
+msgstr ""
+
+msgctxt "#30038"
+msgid "Comma-separated, e.g. en,ja,ko,zh - or 'all' for no filter"
+msgstr ""
+
+msgctxt "#30039"
+msgid "Minimum votes for recommendations"
+msgstr ""
+
+msgctxt "#30047"
+msgid "0 uses the tier default"
+msgstr ""
+
+msgctxt "#30048"
+msgid "Exclude genres from recommendations"
+msgstr ""
+
+msgctxt "#30049"
+msgid "Comma-separated TMDB genre ids, e.g. 99,10764 for docs and reality"
+msgstr ""
+
 # --- maintenance ------------------------------------------------------------
 
 msgctxt "#30040"

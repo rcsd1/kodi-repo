@@ -193,11 +193,18 @@ class Store(object):
         return self.call("GET", "/watched?limit={0}".format(int(limit)))
 
     def recommendations(self, media_type="movie", tier="any", genres="",
-                        limit=60):
+                        limit=60, languages="", exclude_genres="",
+                        min_votes=0):
         query = "media_type={0}&tier={1}&limit={2}".format(
             urllib.parse.quote(media_type), urllib.parse.quote(tier), int(limit))
         if genres:
             query += "&genres=" + urllib.parse.quote(str(genres))
+        if languages:
+            query += "&languages=" + urllib.parse.quote(str(languages))
+        if exclude_genres:
+            query += "&exclude_genres=" + urllib.parse.quote(str(exclude_genres))
+        if min_votes:
+            query += "&min_votes={0}".format(int(min_votes))
         return self.call("GET", "/recommendations?" + query)
 
     def health(self):

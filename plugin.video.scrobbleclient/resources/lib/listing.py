@@ -189,7 +189,8 @@ def build_watched(handle):
     log("listed {0} watched items".format(len(items)))
 
 
-def build_recommended(handle, media_type=None, tier=None, genres=None):
+def build_recommended(handle, media_type=None, tier=None, genres=None,
+                      languages=None, exclude_genres=None, min_votes=None):
     """
     Recommendations generated from your own watch history via TMDB.
 
@@ -205,10 +206,20 @@ def build_recommended(handle, media_type=None, tier=None, genres=None):
 
     media_type = "tv" if (media_type or "").lower() in ("tv", "show",
                                                         "episode") else "movie"
+    # Anything given on the widget path wins over the setting, so several rows
+    # can use different filters without reconfiguring the addon.
+    try:
+        setting_votes = int(_setting("rec_min_votes", "0") or 0)
+    except ValueError:
+        setting_votes = 0
+
     data = store.recommendations(
         media_type=media_type,
         tier=tier or _setting("rec_tier", "any") or "any",
         genres=genres or "",
+        languages=languages or _setting("rec_languages", "") or "",
+        exclude_genres=exclude_genres or _setting("rec_exclude_genres", "") or "",
+        min_votes=int(min_votes) if min_votes else setting_votes,
         limit=int(_setting("widget_limit", "50") or 50))
     if data is None:
         return _message_directory(
@@ -408,7 +419,10 @@ def route(argv):
         build_recommended(handle,
                           media_type=params.get("media_type"),
                           tier=params.get("tier"),
-                          genres=params.get("genres"))
+                          genres=params.get("genres"),
+                          languages=params.get("languages"),
+                          exclude_genres=params.get("exclude_genres"),
+                          min_votes=params.get("min_votes"))
     elif which == "progress":
         build_directory(handle)
     elif not params:
