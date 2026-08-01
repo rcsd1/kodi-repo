@@ -120,9 +120,10 @@ def write_indexes(addon_ids):
 
 
 def main():
-    if os.path.isdir(ZIPS):
-        shutil.rmtree(ZIPS)
-    os.makedirs(ZIPS)
+    # Deliberately NOT wiping zips/. Every version ever built stays here, so
+    # rolling back to an older addon is just sideloading an older file. Kodi
+    # itself keeps repositories this way.
+    os.makedirs(ZIPS, exist_ok=True)
 
     entries = []
     found = list(addon_dirs())
