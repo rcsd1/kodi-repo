@@ -105,6 +105,15 @@ class Scrobbler(xbmc.Player):
                 break
         return 0.0
 
+    def _clear_handoff(self):
+        """Kodi is decoding, so no external player will want this. Removing it
+        stops a later standalone mpv launch picking up a stale identity."""
+        try:
+            if os.path.exists(handoff_path()):
+                os.remove(handoff_path())
+        except Exception as exc:
+            log("could not clear handoff: {0}".format(exc), xbmc.LOGWARNING)
+
     def _write_handoff(self, identity):
         """
         Kodi has full identity milliseconds before it hands the URL to mpv.
@@ -184,23 +193,55 @@ class Scrobbler(xbmc.Player):
 
     # -------------------------------------------------------------- events --
 
+    def onPlayBackStarted(self):
+        """
+        Earliest hook Kodi offers -- fires before the stream is available, and
+        therefore before an external player has had time to open it.
+
+        The handoff must be written here rather than after delegation
+        detection. That detection polls getTotalTime() for several seconds, by
+        which point mpv has already launched, loaded the file and looked for a
+        handoff that did not yet exist.
+
+        Writing early and deleting later if Kodi turns out to be decoding is
+        the correct order. It also covers the known Kodi bug where
+        onAVStarted does not fire for external players on some builds.
+        """
+        try:
+            identity = ident_mod.extract(self)
+        except Exception as exc:
+            log("early identity extraction failed: {0}".format(exc),
+                xbmc.LOGWARNING)
+            return
+        if identity:
+            self.identity = identity
+            self._write_handoff(identity)
+
     def onAVStarted(self):
+        previous = self.identity
         self.reset()
 
-        identity = ident_mod.extract(self)
+        identity = ident_mod.extract(self) or previous
         if identity is None:
             log("nothing identifiable playing -- ignoring", xbmc.LOGWARNING)
+            self._clear_handoff()
             return
         self.identity = identity
+
+        # Refresh the handoff -- metadata is sometimes richer by now than it
+        # was at onPlayBackStarted, and rewriting is cheap.
+        self._write_handoff(identity)
 
         self.duration = self._detect_duration()
         self.delegated = self.duration <= 0
 
         if self.delegated:
-            log("Kodi is not decoding (external player) -- handing off, "
+            log("Kodi is not decoding (external player) -- handed off, "
                 "not scrobbling")
-            self._write_handoff(identity)
             return
+
+        # Kodi is decoding after all, so the handoff was speculative.
+        self._clear_handoff()
 
         log("scrobbling {0} ({1:.0f}s)".format(
             ident_mod.describe(identity), self.duration))

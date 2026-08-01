@@ -1,3 +1,17 @@
+# Secrets must never reach this repo -- it is public, because Kodi has to be
+# able to fetch from it without authentication.
+*.conf
+*.key
+*.pem
+*.env
+.env
+tokens.txt
+secrets*
+deploy.conf
+repo.conf
+
+# Noise
 .DS_Store
 __pycache__/
 *.pyc
+*.log
