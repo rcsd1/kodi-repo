@@ -1,0 +1,244 @@
+# Kodi Media Center language file
+# Addon Name: Scrobble Client
+# Addon id: plugin.video.scrobbleclient
+msgid ""
+msgstr ""
+"Project-Id-Version: Scrobble Client\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-01 00:00+0000\n"
+"PO-Revision-Date: 2026-08-01 00:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: English (United Kingdom)\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: en_gb\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+# --- categories -------------------------------------------------------------
+
+msgctxt "#30000"
+msgid "Connection"
+msgstr ""
+
+msgctxt "#30001"
+msgid "Playback"
+msgstr ""
+
+msgctxt "#30002"
+msgid "Lists"
+msgstr ""
+
+msgctxt "#30003"
+msgid "Store maintenance"
+msgstr ""
+
+msgctxt "#30004"
+msgid "Advanced"
+msgstr ""
+
+# --- connection -------------------------------------------------------------
+
+msgctxt "#30010"
+msgid "Store URL"
+msgstr ""
+
+msgctxt "#30011"
+msgid "Device token"
+msgstr ""
+
+msgctxt "#30012"
+msgid "Test connection"
+msgstr ""
+
+msgctxt "#30013"
+msgid "Admin token (optional)"
+msgstr ""
+
+msgctxt "#30014"
+msgid "Enter the full URL including https://"
+msgstr ""
+
+msgctxt "#30015"
+msgid "The token minted for this device"
+msgstr ""
+
+msgctxt "#30016"
+msgid "Only needed for maintenance actions below"
+msgstr ""
+
+# --- playback ---------------------------------------------------------------
+
+msgctxt "#30020"
+msgid "Resume automatically"
+msgstr ""
+
+msgctxt "#30021"
+msgid "Show notifications"
+msgstr ""
+
+msgctxt "#30022"
+msgid "Minimum progress to save (seconds)"
+msgstr ""
+
+msgctxt "#30023"
+msgid "Ask before resuming"
+msgstr ""
+
+msgctxt "#30024"
+msgid "Seek this many seconds before the saved position"
+msgstr ""
+
+# --- lists ------------------------------------------------------------------
+
+msgctxt "#30030"
+msgid "Default recommendation tier"
+msgstr ""
+
+msgctxt "#30031"
+msgid "Items per list"
+msgstr ""
+
+msgctxt "#30032"
+msgid "Any"
+msgstr ""
+
+msgctxt "#30033"
+msgid "Popular"
+msgstr ""
+
+msgctxt "#30034"
+msgid "Under the radar"
+msgstr ""
+
+msgctxt "#30035"
+msgid "Obscure"
+msgstr ""
+
+msgctxt "#30036"
+msgid "Show progress percentage in labels"
+msgstr ""
+
+# --- maintenance ------------------------------------------------------------
+
+msgctxt "#30040"
+msgid "Watched threshold (percent)"
+msgstr ""
+
+msgctxt "#30041"
+msgid "Apply watched threshold to store"
+msgstr ""
+
+msgctxt "#30042"
+msgid "Refresh recommendations now"
+msgstr ""
+
+msgctxt "#30043"
+msgid "Update anime mappings now"
+msgstr ""
+
+msgctxt "#30044"
+msgid "Run TMDB backfill now"
+msgstr ""
+
+msgctxt "#30045"
+msgid "Show store statistics"
+msgstr ""
+
+msgctxt "#30046"
+msgid "Requires the admin token above"
+msgstr ""
+
+# --- advanced ---------------------------------------------------------------
+
+msgctxt "#30050"
+msgid "Movie play URL template"
+msgstr ""
+
+msgctxt "#30051"
+msgid "Episode play URL template"
+msgstr ""
+
+msgctxt "#30052"
+msgid "TV show info URL template"
+msgstr ""
+
+msgctxt "#30053"
+msgid "Enable debug logging"
+msgstr ""
+
+msgctxt "#30054"
+msgid "Clear offline queue"
+msgstr ""
+
+# --- plugin menu ------------------------------------------------------------
+
+msgctxt "#30060"
+msgid "Resume Watching"
+msgstr ""
+
+msgctxt "#30061"
+msgid "Watched History"
+msgstr ""
+
+msgctxt "#30062"
+msgid "Recommended Movies"
+msgstr ""
+
+msgctxt "#30063"
+msgid "Recommended Shows"
+msgstr ""
+
+msgctxt "#30064"
+msgid "Hidden Gems"
+msgstr ""
+
+msgctxt "#30065"
+msgid "Store Status"
+msgstr ""
+
+msgctxt "#30066"
+msgid "Settings"
+msgstr ""
+
+# --- messages ---------------------------------------------------------------
+
+msgctxt "#30070"
+msgid "Not configured - open Settings and enter your store URL and token"
+msgstr ""
+
+msgctxt "#30071"
+msgid "Store unreachable"
+msgstr ""
+
+msgctxt "#30072"
+msgid "Connected"
+msgstr ""
+
+msgctxt "#30073"
+msgid "Nothing here yet"
+msgstr ""
+
+msgctxt "#30074"
+msgid "Watch a few things first, then recommendations will appear"
+msgstr ""
+
+msgctxt "#30075"
+msgid "Remove from Resume Watching"
+msgstr ""
+
+msgctxt "#30076"
+msgid "Mark as watched"
+msgstr ""
+
+msgctxt "#30077"
+msgid "Admin token required for this action"
+msgstr ""
+
+msgctxt "#30078"
+msgid "Done"
+msgstr ""
+
+msgctxt "#30079"
+msgid "Failed"
+msgstr ""
