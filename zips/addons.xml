@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <addons>
-<addon id="plugin.video.scrobbleclient" name="Scrobble Client" version="1.4.0" provider-name="local">
+<addon id="plugin.video.scrobbleclient" name="Scrobble Client" version="1.5.0" provider-name="local">
     <requires>
         <import addon="xbmc.python" version="3.0.0" />
     </requires>
@@ -12,6 +12,10 @@
         <summary lang="en_GB">Resume points and watched history against your own store</summary>
         <description lang="en_GB">Scrobbles playback to a self-hosted store and serves a Resume Watching list with progress indicators. Works with Seren, Umbrella, Fen and Otaku. Detects when Kodi delegates to an external player and hands off instead of scrobbling.</description>
         <platform>all</platform>
+        <assets>
+            <icon>icon.png</icon>
+            <fanart>fanart.jpg</fanart>
+        </assets>
         <license>MIT</license>
     </extension>
 </addon>
