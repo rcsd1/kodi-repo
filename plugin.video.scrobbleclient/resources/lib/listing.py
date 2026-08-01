@@ -161,22 +161,24 @@ def _message_directory(handle, message):
     xbmcplugin.endOfDirectory(handle)
 
 
-def build_watched(handle):
+def build_watched(handle, kind=""):
     """Watched history, most recent first. No resume points -- these are done."""
     store = Store()
     if not store.configured:
         return _message_directory(handle, _(30070))
 
-    data = store.watched(limit=int(_setting("widget_limit", "50") or 50))
+    data = store.watched(limit=int(_setting("widget_limit", "50") or 50),
+                         kind=kind)
     if data is None:
         return _message_directory(handle, _(30071))
 
     items = data.get("items", [])
-    xbmcplugin.setContent(handle, "movies")
+    xbmcplugin.setContent(handle, _content_for(items, kind))
     for item in items:
         li = xbmcgui.ListItem(label=_label(item))
         li.setArt(_build_art(item))
         _apply_info(li, item, 0, 0)
+        li.addContextMenuItems(_rate_context(item))
         try:
             li.getVideoInfoTag().setPlaycount(1)
         except Exception:
@@ -280,7 +282,34 @@ def build_recommended(handle, media_type=None, tier=None, genres=None,
         len(items), media_type, data.get("tier"), data.get("cached")))
 
 
-def build_directory(handle):
+def _content_for(items, kind):
+    """Kodi styles rows by content type, so mixed lists get the wrong layout."""
+    if kind == "movie":
+        return "movies"
+    if kind == "episode":
+        return "episodes"
+    if items and all(i["kind"] == "episode" for i in items):
+        return "episodes"
+    return "movies"
+
+
+def _rate_context(item):
+    """Rating is a context action, never a prompt. Nothing pops up after
+    playback unless you go looking for it."""
+    if not item.get("media_id"):
+        return []
+    addon_id = ADDON.getAddonInfo("id")
+    entries = [(_(30084),
+                "RunPlugin(plugin://{0}/?action=rate&media_id={1})".format(
+                    addon_id, item["media_id"]))]
+    if item.get("rating"):
+        entries.append((_(30086),
+                        "RunPlugin(plugin://{0}/?action=unrate&media_id={1})".format(
+                            addon_id, item["media_id"])))
+    return entries
+
+
+def build_directory(handle, kind=""):
     store = Store()
     if not store.configured:
         li = xbmcgui.ListItem(label=_(30070))
@@ -289,7 +318,8 @@ def build_directory(handle):
         xbmcplugin.endOfDirectory(handle)
         return
 
-    data = store.in_progress(limit=int(_setting("widget_limit", "50") or 50))
+    data = store.in_progress(limit=int(_setting("widget_limit", "50") or 50),
+                             kind=kind)
     if data is None:
         li = xbmcgui.ListItem(label=_(30071))
         li.setArt({"icon": FALLBACK_ART})
@@ -298,8 +328,7 @@ def build_directory(handle):
         return
 
     items = data.get("items", [])
-    xbmcplugin.setContent(handle, "episodes" if all(
-        i["kind"] == "episode" for i in items) and items else "movies")
+    xbmcplugin.setContent(handle, _content_for(items, kind))
 
     for item in items:
         position = float(item.get("position_sec") or 0)
@@ -322,6 +351,7 @@ def build_directory(handle):
                 _(30076),
                 "RunPlugin(plugin://{0}/?action=mark_watched&media_id={1})".format(
                     ADDON.getAddonInfo("id"), item["media_id"])))
+            context.extend(_rate_context(item))
         if context:
             li.addContextMenuItems(context)
 
@@ -334,6 +364,26 @@ def build_directory(handle):
 def remove_item(media_id):
     store = Store()
     store.call("DELETE", "/progress/{0}".format(int(media_id)))
+    xbmc.executebuiltin("Container.Refresh")
+
+
+def rate_item(media_id):
+    """A 1-10 picker, opened on demand. No post-playback prompt exists."""
+    labels = [str(n) for n in range(10, 0, -1)]
+    choice = xbmcgui.Dialog().select(_(30085), labels)
+    if choice < 0:
+        return
+    rating = int(labels[choice])
+    result = Store().call("POST", "/ratings/by-media",
+                          {"media_id": int(media_id), "rating": rating})
+    if result is not None:
+        xbmcgui.Dialog().notification("Scrobble", "{0}: {1}/10".format(
+            _(30085), rating), xbmcgui.NOTIFICATION_INFO, 3000)
+    xbmc.executebuiltin("Container.Refresh")
+
+
+def unrate_item(media_id):
+    Store().call("DELETE", "/ratings/{0}".format(int(media_id)))
     xbmc.executebuiltin("Container.Refresh")
 
 
@@ -357,7 +407,11 @@ def build_root(handle):
     addon_id = ADDON.getAddonInfo("id")
     entries = [
         (30060, "?list=progress", "DefaultInProgressShows.png"),
+        (30080, "?list=progress&kind=movie", "DefaultMovies.png"),
+        (30081, "?list=progress&kind=episode", "DefaultTVShows.png"),
         (30061, "?list=watched", "DefaultTVShows.png"),
+        (30082, "?list=watched&kind=movie", "DefaultMovies.png"),
+        (30083, "?list=watched&kind=episode", "DefaultTVShows.png"),
         (30062, "?list=recommended&media_type=movie", "DefaultMovies.png"),
         (30063, "?list=recommended&media_type=tv", "DefaultTVShows.png"),
         (30064, "?list=recommended&tier=obscure", "DefaultAddonVideo.png"),
@@ -407,14 +461,25 @@ def route(argv):
         mark_watched(params.get("media_id"))
         return
 
+    if action == "rate":
+        rate_item(params.get("media_id"))
+        return
+
+    if action == "unrate":
+        unrate_item(params.get("media_id"))
+        return
+
     if action:
         from . import actions
         if actions.run(action):
             return
 
     which = (params.get("list") or "").lower()
+    kind = (params.get("kind") or "").lower()
+    if kind not in ("movie", "episode"):
+        kind = ""
     if which == "watched":
-        build_watched(handle)
+        build_watched(handle, kind=kind)
     elif which in ("recommended", "recommendations", "recs"):
         build_recommended(handle,
                           media_type=params.get("media_type"),
@@ -424,10 +489,10 @@ def route(argv):
                           exclude_genres=params.get("exclude_genres"),
                           min_votes=params.get("min_votes"))
     elif which == "progress":
-        build_directory(handle)
+        build_directory(handle, kind=kind)
     elif not params:
         # Bare plugin:// -- the menu. A widget pointed here still gets the
         # in-progress list via ?list=progress, so nothing existing breaks.
         build_root(handle)
     else:
-        build_directory(handle)
+        build_directory(handle, kind=kind)

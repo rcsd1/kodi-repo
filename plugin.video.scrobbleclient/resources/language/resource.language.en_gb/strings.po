@@ -201,6 +201,38 @@ msgctxt "#30060"
 msgid "Resume Watching"
 msgstr ""
 
+msgctxt "#30080"
+msgid "In Progress Movies"
+msgstr ""
+
+msgctxt "#30081"
+msgid "In Progress TV"
+msgstr ""
+
+msgctxt "#30082"
+msgid "Watched Movies"
+msgstr ""
+
+msgctxt "#30083"
+msgid "Watched TV"
+msgstr ""
+
+msgctxt "#30084"
+msgid "Rate this"
+msgstr ""
+
+msgctxt "#30085"
+msgid "Your rating"
+msgstr ""
+
+msgctxt "#30086"
+msgid "Remove rating"
+msgstr ""
+
+msgctxt "#30087"
+msgid "Fetch missing artwork"
+msgstr ""
+
 msgctxt "#30061"
 msgid "Watched History"
 msgstr ""

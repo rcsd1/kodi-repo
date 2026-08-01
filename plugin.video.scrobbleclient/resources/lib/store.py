@@ -186,11 +186,22 @@ class Store(object):
                          {"identity": identity, "client_seq": next_seq()},
                          queue_on_failure=True)
 
-    def in_progress(self, limit=100):
-        return self.call("GET", "/progress?limit={0}".format(int(limit)))
+    def in_progress(self, limit=100, kind=""):
+        path = "/progress?limit={0}".format(int(limit))
+        if kind in ("movie", "episode"):
+            path += "&kind=" + kind
+        return self.call("GET", path)
 
-    def watched(self, limit=100):
-        return self.call("GET", "/watched?limit={0}".format(int(limit)))
+    def watched(self, limit=100, kind=""):
+        path = "/watched?limit={0}".format(int(limit))
+        if kind in ("movie", "episode"):
+            path += "&kind=" + kind
+        return self.call("GET", path)
+
+    def rate(self, identity, rating):
+        return self.call("POST", "/ratings",
+                         {"identity": identity, "rating": int(rating)},
+                         queue_on_failure=True)
 
     def recommendations(self, media_type="movie", tier="any", genres="",
                         limit=60, languages="", exclude_genres="",

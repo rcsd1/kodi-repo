@@ -177,6 +177,13 @@
                         <close>false</close>
                     </control>
                 </setting>
+                <setting id="fetch_artwork" type="action" label="30087" help="30046">
+                    <level>0</level>
+                    <data>RunPlugin(plugin://plugin.video.scrobbleclient/?action=artwork)</data>
+                    <control type="button" format="action">
+                        <close>false</close>
+                    </control>
+                </setting>
                 <setting id="show_stats" type="action" label="30045">
                     <level>0</level>
                     <data>RunPlugin(plugin://plugin.video.scrobbleclient/?action=stats)</data>
