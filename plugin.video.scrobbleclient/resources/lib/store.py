@@ -78,7 +78,10 @@ class Store(object):
     def __init__(self):
         self.reload()
 
+    last_error = None
+
     def reload(self):
+        self.last_error = None
         addon = xbmcaddon.Addon()
         self.base = (addon.getSetting("store_url") or "").rstrip("/")
         self.token = addon.getSetting("device_token") or ""
@@ -113,6 +116,9 @@ class Store(object):
             except Exception:
                 pass
             log("HTTP {0} on {1} {2}".format(exc.code, path, detail), xbmc.LOGERROR)
+            # 503 from /recommendations means the server has no TMDB key.
+            # Surfacing the real reason beats a generic "unavailable".
+            self.last_error = {"code": exc.code, "detail": detail}
             # 4xx is our fault and requeueing would loop forever. Only queue on
             # transport failures and server errors.
             if queue_on_failure and exc.code >= 500:
@@ -186,17 +192,27 @@ class Store(object):
                          {"identity": identity, "client_seq": next_seq()},
                          queue_on_failure=True)
 
-    def in_progress(self, limit=100, kind=""):
+    def in_progress(self, limit=100, kind="", show=None):
         path = "/progress?limit={0}".format(int(limit))
-        if kind in ("movie", "episode"):
+        if show:
+            path += "&show={0}".format(int(show))
+        elif kind in ("movie", "episode"):
             path += "&kind=" + kind
         return self.call("GET", path)
 
-    def watched(self, limit=100, kind=""):
+    def watched(self, limit=100, kind="", show=None):
         path = "/watched?limit={0}".format(int(limit))
-        if kind in ("movie", "episode"):
+        if show:
+            path += "&show={0}".format(int(show))
+        elif kind in ("movie", "episode"):
             path += "&kind=" + kind
         return self.call("GET", path)
+
+    def in_progress_shows(self, limit=100):
+        return self.call("GET", "/progress/shows?limit={0}".format(int(limit)))
+
+    def watched_shows(self, limit=100):
+        return self.call("GET", "/watched/shows?limit={0}".format(int(limit)))
 
     def rate(self, identity, rating):
         return self.call("POST", "/ratings",

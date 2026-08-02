@@ -161,14 +161,14 @@ def _message_directory(handle, message):
     xbmcplugin.endOfDirectory(handle)
 
 
-def build_watched(handle, kind=""):
+def build_watched(handle, kind="", show=None):
     """Watched history, most recent first. No resume points -- these are done."""
     store = Store()
     if not store.configured:
         return _message_directory(handle, _(30070))
 
     data = store.watched(limit=int(_setting("widget_limit", "50") or 50),
-                         kind=kind)
+                         kind=kind, show=show)
     if data is None:
         return _message_directory(handle, _(30071))
 
@@ -224,8 +224,10 @@ def build_recommended(handle, media_type=None, tier=None, genres=None,
         min_votes=int(min_votes) if min_votes else setting_votes,
         limit=int(_setting("widget_limit", "50") or 50))
     if data is None:
-        return _message_directory(
-            handle, "Recommendations unavailable (is TMDB configured?)")
+        err = getattr(store, "last_error", None) or {}
+        if err.get("code") == 503 and "TMDB" in str(err.get("detail", "")):
+            return _message_directory(handle, _(30088))
+        return _message_directory(handle, _(30071))
 
     items = data.get("items", [])
     if not items:
@@ -309,7 +311,100 @@ def _rate_context(item):
     return entries
 
 
-def build_directory(handle, kind=""):
+def build_shows(handle, which="progress"):
+    """
+    A list of SHOWS, not episodes.
+
+    This is what a TV row should be: the series poster, and how much of it is
+    left. A flat list of episodes from unrelated series has nothing tying the
+    entries together and no useful sort order.
+    """
+    store = Store()
+    if not store.configured:
+        return _message_directory(handle, _(30070))
+
+    limit = int(_setting("widget_limit", "50") or 50)
+    data = (store.in_progress_shows(limit) if which == "progress"
+            else store.watched_shows(limit))
+    if data is None:
+        return _message_directory(handle, _(30071))
+
+    items = data.get("items", [])
+    if not items:
+        return _message_directory(handle, _(30073))
+
+    addon_id = ADDON.getAddonInfo("id")
+    xbmcplugin.setContent(handle, "tvshows")
+
+    for item in items:
+        label = item.get("title") or "Unknown"
+        li = xbmcgui.ListItem(label=label)
+
+        art = item.get("art") or {}
+        resolved = {}
+        for target in ("poster", "thumb", "fanart"):
+            if art.get(target):
+                resolved[target] = art[target]
+        if "poster" in resolved:
+            resolved.setdefault("thumb", resolved["poster"])
+        if not resolved:
+            resolved = {"poster": FALLBACK_ART, "thumb": FALLBACK_ART}
+        resolved.setdefault("icon", resolved.get("poster", FALLBACK_ART))
+        li.setArt(resolved)
+
+        # Each setter is attempted independently. Grouping them means one
+        # unavailable method on an older Kodi silently skips the rest --
+        # which is how the episode counts went missing.
+        try:
+            tag = li.getVideoInfoTag()
+        except Exception as exc:
+            tag = None
+            log("no info tag available: {0}".format(exc), xbmc.LOGWARNING)
+
+        if tag is not None:
+            for setter, value in (
+                ("setMediaType", "tvshow"),
+                ("setTitle", label),
+                ("setTvShowTitle", label),
+                ("setYear", int(item["year"]) if item.get("year") else None),
+                ("setPlot", item.get("overview")),
+            ):
+                if value is None:
+                    continue
+                try:
+                    getattr(tag, setter)(value)
+                except Exception:
+                    pass
+            if item.get("tmdb_id"):
+                try:
+                    tag.setUniqueIDs({"tmdb": str(item["tmdb_id"])}, "tmdb")
+                except Exception:
+                    pass
+
+        # Skins draw the unwatched-count bubble from these properties, which is
+        # the "19 remaining" badge on the poster. Set outside the tag block so
+        # they always land.
+        if item.get("total_episodes"):
+            li.setProperty("TotalEpisodes", str(item["total_episodes"]))
+        if item.get("watched_count") is not None:
+            li.setProperty("WatchedEpisodes", str(item["watched_count"]))
+        if item.get("remaining") is not None:
+            li.setProperty("UnWatchedEpisodes", str(item["remaining"]))
+            li.setProperty("NewEpisodes", str(item["remaining"]))
+        if item.get("in_progress_count"):
+            li.setProperty("InProgressEpisodes",
+                           str(item["in_progress_count"]))
+
+        li.setProperty("IsPlayable", "false")
+        url = "plugin://{0}/?list={1}&kind=episode&show={2}".format(
+            addon_id, which, item.get("tmdb_id"))
+        xbmcplugin.addDirectoryItem(handle, url, li, True)
+
+    xbmcplugin.endOfDirectory(handle, cacheToDisc=False)
+    log("listed {0} shows ({1})".format(len(items), which))
+
+
+def build_directory(handle, kind="", show=None):
     store = Store()
     if not store.configured:
         li = xbmcgui.ListItem(label=_(30070))
@@ -319,7 +414,7 @@ def build_directory(handle, kind=""):
         return
 
     data = store.in_progress(limit=int(_setting("widget_limit", "50") or 50),
-                             kind=kind)
+                             kind=kind, show=show)
     if data is None:
         li = xbmcgui.ListItem(label=_(30071))
         li.setArt({"icon": FALLBACK_ART})
@@ -478,8 +573,19 @@ def route(argv):
     kind = (params.get("kind") or "").lower()
     if kind not in ("movie", "episode"):
         kind = ""
+    try:
+        show = int(params.get("show") or 0) or None
+    except ValueError:
+        show = None
+
+    # Asking for TV without naming a show means the list of shows. Drilling in
+    # by passing show=<tmdb id> gives that show's episodes.
+    if kind == "episode" and not show and which in ("progress", "watched"):
+        build_shows(handle, which)
+        return
+
     if which == "watched":
-        build_watched(handle, kind=kind)
+        build_watched(handle, kind=kind, show=show)
     elif which in ("recommended", "recommendations", "recs"):
         build_recommended(handle,
                           media_type=params.get("media_type"),
@@ -489,10 +595,10 @@ def route(argv):
                           exclude_genres=params.get("exclude_genres"),
                           min_votes=params.get("min_votes"))
     elif which == "progress":
-        build_directory(handle, kind=kind)
+        build_directory(handle, kind=kind, show=show)
     elif not params:
         # Bare plugin:// -- the menu. A widget pointed here still gets the
         # in-progress list via ?list=progress, so nothing existing breaks.
         build_root(handle)
     else:
-        build_directory(handle, kind=kind)
+        build_directory(handle, kind=kind, show=show)
