@@ -195,6 +195,13 @@
                         <close>false</close>
                     </control>
                 </setting>
+                <setting id="inspect_paths" type="action" label="30103" help="30101">
+                    <level>0</level>
+                    <data>RunPlugin(plugin://plugin.video.scrobbleclient/?action=inspect_paths)</data>
+                    <control type="button" format="action">
+                        <close>false</close>
+                    </control>
+                </setting>
                 <setting id="kodi_sync" type="action" label="30100" help="30101">
                     <level>0</level>
                     <data>RunPlugin(plugin://plugin.video.scrobbleclient/?action=kodi_sync)</data>

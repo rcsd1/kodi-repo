@@ -219,6 +219,11 @@ def test_kodi_sync():
     kodisync.diagnose()
 
 
+def inspect_paths():
+    from . import kodisync
+    kodisync.diagnose_paths()
+
+
 def kodi_sync():
     from . import kodisync
     kodisync.sync()
@@ -228,6 +233,7 @@ ACTIONS = {
     "test": test_connection,
     "test_kodi_sync": test_kodi_sync,
     "kodi_sync": kodi_sync,
+    "inspect_paths": inspect_paths,
     "apply_threshold": apply_threshold,
     "stats": show_stats,
     "refresh_recs": refresh_recs,

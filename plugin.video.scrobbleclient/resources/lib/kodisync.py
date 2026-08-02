@@ -143,6 +143,77 @@ def diagnose():
     return ok
 
 
+def inspect_show(tmdb_id, season=1):
+    """
+    Ask TMDbHelper what paths its own episode items use.
+
+    Guessing the play URL format is how the first sync wrote records nothing
+    would ever read. Files.GetDirectory returns the real items, so the format
+    comes from TMDbHelper rather than from assumption.
+    """
+    listing = jsonrpc("Files.GetDirectory", {
+        "directory": ("plugin://plugin.video.themoviedb.helper/?info=episodes"
+                      "&tmdb_type=tv&tmdb_id={0}&season={1}".format(
+                          tmdb_id, season)),
+        "media": "video",
+        "properties": ["title", "season", "episode", "playcount", "resume",
+                       "file"],
+    })
+    if "error" in listing:
+        return None, listing["error"]
+    result = listing.get("result")
+    # A malformed or unexpected reply must not take the sync down with it.
+    if not isinstance(result, dict):
+        return [], None
+    files = result.get("files")
+    return (files if isinstance(files, list) else []), None
+
+
+def diagnose_paths(tmdb_id=None, season=1):
+    """Show the real item paths beside the one this addon writes."""
+    if not tmdb_id:
+        store = Store()
+        shows = (store.in_progress_shows(5) or {}).get("items", [])
+        if not shows:
+            shows = (store.watched_shows(5) or {}).get("items", [])
+        if not shows:
+            xbmcgui.Dialog().ok("Scrobble", "Nothing watched yet to inspect.")
+            return
+        tmdb_id = shows[0]["tmdb_id"]
+        season = shows[0].get("next_season") or 1
+
+    files, error = inspect_show(tmdb_id, season)
+    lines = ["Show {0}, season {1}".format(tmdb_id, season), ""]
+
+    if error:
+        lines.append("TMDbHelper listing failed:")
+        lines.append(str(error.get("message", error)))
+        xbmcgui.Dialog().textviewer("Episode paths", "\n".join(lines))
+        return
+
+    if not files:
+        lines.append("TMDbHelper returned no items for that season.")
+        xbmcgui.Dialog().textviewer("Episode paths", "\n".join(lines))
+        return
+
+    lines.append("What this addon writes:")
+    lines.append("  " + episode_path(tmdb_id, season, 1))
+    lines.append("")
+    lines.append("What TMDbHelper actually uses:")
+    for item in files[:4]:
+        lines.append("  S{0}E{1}  playcount={2}".format(
+            item.get("season"), item.get("episode"), item.get("playcount")))
+        lines.append("  " + str(item.get("file")))
+        lines.append("")
+
+    if files and files[0].get("file"):
+        same = files[0]["file"] == episode_path(
+            tmdb_id, season, files[0].get("episode") or 1)
+        lines.append("MATCH" if same else "MISMATCH -- this is why no ticks")
+
+    xbmcgui.Dialog().textviewer("Episode paths", "\n".join(lines))
+
+
 # --------------------------------------------------------------------------
 # the sync
 # --------------------------------------------------------------------------
@@ -165,6 +236,22 @@ def sync(limit=5000, show_progress=True):
         dialog.create("Scrobble", _(30098))
 
     counts = {"watched": 0, "progress": 0, "failed": 0}
+    # Cache of real paths per (show, season), discovered from TMDbHelper rather
+    # than assumed. Falls back to the template when a listing is unavailable.
+    discovered = {}
+
+    def path_for_episode(tmdb_id, season, episode):
+        key = (tmdb_id, season)
+        if key not in discovered:
+            files, error = inspect_show(tmdb_id, season)
+            mapping = {}
+            for item in files or []:
+                if item.get("episode") is not None and item.get("file"):
+                    mapping[item["episode"]] = item["file"]
+            discovered[key] = mapping
+        return (discovered[key].get(episode)
+                or episode_path(tmdb_id, season, episode))
+
     try:
         watched = (store.watched(limit=limit) or {}).get("items", [])
         total = max(1, len(watched))
@@ -174,8 +261,8 @@ def sync(limit=5000, show_progress=True):
             if item["kind"] == "episode":
                 if item.get("season") is None or item.get("episode") is None:
                     continue
-                path = episode_path(item["tmdb_id"], item["season"],
-                                    item["episode"])
+                path = path_for_episode(item["tmdb_id"], item["season"],
+                                        item["episode"])
             else:
                 path = movie_path(item["tmdb_id"])
             result = set_watched(path, watched=True)
@@ -192,8 +279,8 @@ def sync(limit=5000, show_progress=True):
             if item["kind"] == "episode":
                 if item.get("season") is None or item.get("episode") is None:
                     continue
-                path = episode_path(item["tmdb_id"], item["season"],
-                                    item["episode"])
+                path = path_for_episode(item["tmdb_id"], item["season"],
+                                        item["episode"])
             else:
                 path = movie_path(item["tmdb_id"])
             result = set_watched(path, watched=False,
