@@ -24,6 +24,11 @@ ADDON = xbmcaddon.Addon()
 ADDON_ID = ADDON.getAddonInfo("id")
 
 TIMEOUT = 6  # short: a dead store must never stall playback
+
+# Generating recommendations means dozens of TMDB calls, so a cold cache takes
+# far longer than a normal request. Timing out at 6s and reporting "store
+# unreachable" was wrong -- the store was working, just busy.
+SLOW_TIMEOUT = 90
 QUEUE_LIMIT = 500
 
 
@@ -92,23 +97,24 @@ class Store(object):
 
     # ---------------------------------------------------------------- http --
 
-    def _request(self, method, path, payload=None):
+    def _request(self, method, path, payload=None, timeout=None):
         url = self.base + path
         data = json.dumps(payload).encode("utf-8") if payload is not None else None
         req = urllib.request.Request(url, data=data, method=method)
         req.add_header("Authorization", "Bearer " + self.token)
         req.add_header("Content-Type", "application/json")
-        with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+        with urllib.request.urlopen(req, timeout=timeout or TIMEOUT) as resp:
             body = resp.read().decode("utf-8")
             return json.loads(body) if body else {}
 
-    def call(self, method, path, payload=None, queue_on_failure=False):
+    def call(self, method, path, payload=None, queue_on_failure=False,
+             timeout=None):
         if not self.configured:
             log("store not configured -- set URL and token in addon settings",
                 xbmc.LOGWARNING)
             return None
         try:
-            return self._request(method, path, payload)
+            return self._request(method, path, payload, timeout=timeout)
         except urllib.error.HTTPError as exc:
             detail = ""
             try:
@@ -214,6 +220,12 @@ class Store(object):
     def watched_shows(self, limit=100):
         return self.call("GET", "/watched/shows?limit={0}".format(int(limit)))
 
+    def show_episodes(self, tmdb_id, season=None):
+        path = "/shows/{0}/episodes".format(int(tmdb_id))
+        if season is not None:
+            path += "?season={0}".format(int(season))
+        return self.call("GET", path, timeout=30)
+
     def rate(self, identity, rating):
         return self.call("POST", "/ratings",
                          {"identity": identity, "rating": int(rating)},
@@ -232,7 +244,10 @@ class Store(object):
             query += "&exclude_genres=" + urllib.parse.quote(str(exclude_genres))
         if min_votes:
             query += "&min_votes={0}".format(int(min_votes))
-        return self.call("GET", "/recommendations?" + query)
+        # Slow timeout: a filter change invalidates the cache and the store
+        # has to regenerate, which takes far longer than a normal call.
+        return self.call("GET", "/recommendations?" + query,
+                         timeout=SLOW_TIMEOUT)
 
     def health(self):
         return self.call("GET", "/health")

@@ -233,6 +233,14 @@ msgctxt "#30087"
 msgid "Fetch missing artwork"
 msgstr ""
 
+msgctxt "#30089"
+msgid "Episode list not fetched yet - try again shortly"
+msgstr ""
+
+msgctxt "#30090"
+msgid "Season"
+msgstr ""
+
 msgctxt "#30088"
 msgid "No TMDB key on the server - set STORE_TMDB_API_KEY in .env"
 msgstr ""

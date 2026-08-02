@@ -251,7 +251,7 @@
                 </setting>
                 <setting id="info_url_tv" type="string" label="30052">
                     <level>2</level>
-                    <default>plugin://plugin.video.themoviedb.helper/?info=details&amp;tmdb_type=tv&amp;tmdb_id={tmdb_id}</default>
+                    <default>plugin://plugin.video.themoviedb.helper/?info=seasons&amp;tmdb_type=tv&amp;tmdb_id={tmdb_id}</default>
                     <constraints>
                         <allowempty>true</allowempty>
                     </constraints>

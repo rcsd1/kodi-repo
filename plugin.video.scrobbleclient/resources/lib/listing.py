@@ -267,9 +267,11 @@ def build_recommended(handle, media_type=None, tier=None, genres=None,
         # A recommended show has no episode yet, so send it to TMDbHelper's
         # info screen rather than trying to play something unspecified.
         if media_type == "tv":
+            # info=seasons lands directly on the season/episode grid.
+            # info=details stops on a summary page needing another click.
             url = _setting(
                 "info_url_tv",
-                "plugin://plugin.video.themoviedb.helper/?info=details"
+                "plugin://plugin.video.themoviedb.helper/?info=seasons"
                 "&tmdb_type=tv&tmdb_id={tmdb_id}").format(
                     tmdb_id=item.get("tmdb_id"))
             li.setProperty("IsPlayable", "false")
@@ -388,20 +390,139 @@ def build_shows(handle, which="progress"):
             li.setProperty("TotalEpisodes", str(item["total_episodes"]))
         if item.get("watched_count") is not None:
             li.setProperty("WatchedEpisodes", str(item["watched_count"]))
-        if item.get("remaining") is not None:
-            li.setProperty("UnWatchedEpisodes", str(item["remaining"]))
-            li.setProperty("NewEpisodes", str(item["remaining"]))
-        if item.get("in_progress_count"):
-            li.setProperty("InProgressEpisodes",
-                           str(item["in_progress_count"]))
+        # Only the three properties Kodi defines. Inventing extras like
+        # InProgressEpisodes made skins draw the in-progress clock instead of
+        # the episode-count bubble.
+        #
+        # A count of zero is also suppressed: a show with nothing left draws a
+        # watched tick, which is more informative than a "0" badge.
+        remaining = item.get("remaining")
+        if remaining is None and item.get("total_episodes"):
+            remaining = item["total_episodes"]
+        if remaining:
+            li.setProperty("UnWatchedEpisodes", str(remaining))
 
         li.setProperty("IsPlayable", "false")
-        url = "plugin://{0}/?list={1}&kind=episode&show={2}".format(
-            addon_id, which, item.get("tmdb_id"))
+        # Straight to the full episode grid -- every season, marked up -- not
+        # a filtered list of only what has been watched.
+        url = "plugin://{0}/?list=show&show={1}".format(
+            addon_id, item.get("tmdb_id"))
         xbmcplugin.addDirectoryItem(handle, url, li, True)
 
     xbmcplugin.endOfDirectory(handle, cacheToDisc=False)
     log("listed {0} shows ({1})".format(len(items), which))
+
+
+def build_show_episodes(handle, tmdb_id, season=None):
+    """
+    Every episode of one show, with watched ticks and progress rings.
+
+    The list comes from TMDB rather than from the watch history, so unwatched
+    episodes appear too -- otherwise there is no way to see what is next.
+    """
+    store = Store()
+    if not store.configured:
+        return _message_directory(handle, _(30070))
+
+    data = store.show_episodes(tmdb_id, season)
+    if data is None:
+        return _message_directory(handle, _(30071))
+
+    items = data.get("items", [])
+    if not items:
+        return _message_directory(handle, _(30089))
+
+    addon_id = ADDON.getAddonInfo("id")
+    xbmcplugin.setContent(handle, "episodes")
+
+    # Season shortcuts when the whole show is being shown at once.
+    if season is None and len(data.get("seasons", [])) > 1:
+        for number in data["seasons"]:
+            li = xbmcgui.ListItem(label="{0} {1}".format(_(30090), number))
+            li.setArt({"icon": "DefaultTVShows.png",
+                       "poster": (items[0]["art"].get("poster")
+                                  or FALLBACK_ART)})
+            li.setProperty("IsPlayable", "false")
+            xbmcplugin.addDirectoryItem(
+                handle,
+                "plugin://{0}/?list=show&show={1}&season={2}".format(
+                    addon_id, tmdb_id, number),
+                li, True)
+
+    for item in items:
+        label = "{0}x{1:02d}. {2}".format(
+            item["season"], item["episode"], item.get("title") or "Episode")
+        li = xbmcgui.ListItem(label=label)
+
+        art = item.get("art") or {}
+        resolved = {k: v for k, v in art.items() if v}
+        if not resolved:
+            resolved = {"thumb": FALLBACK_ART}
+        resolved.setdefault("icon", resolved.get("thumb", FALLBACK_ART))
+        li.setArt(resolved)
+
+        duration = item.get("duration_sec") or (
+            (item.get("runtime") or 0) * 60)
+        position = item.get("position_sec") or 0
+
+        try:
+            tag = li.getVideoInfoTag()
+            for setter, value in (
+                ("setMediaType", "episode"),
+                ("setTitle", item.get("title")),
+                ("setTvShowTitle", item.get("show_title") or data.get("title")),
+                ("setSeason", item.get("season")),
+                ("setEpisode", item.get("episode")),
+                ("setPlot", item.get("overview")),
+                ("setFirstAired", item.get("air_date")),
+                ("setPlaycount", item.get("play_count") or 0),
+            ):
+                if value is None:
+                    continue
+                try:
+                    getattr(tag, setter)(value)
+                except Exception:
+                    pass
+            if duration:
+                try:
+                    tag.setDuration(int(duration))
+                except Exception:
+                    pass
+            if position > 0 and duration:
+                try:
+                    tag.setResumePoint(float(position), float(duration))
+                except Exception:
+                    pass
+            if item.get("rating"):
+                try:
+                    tag.setUserRating(int(item["rating"]))
+                except Exception:
+                    pass
+        except Exception as exc:
+            log("episode info tag failed: {0}".format(exc), xbmc.LOGWARNING)
+
+        if position > 0 and duration:
+            li.setProperty("resumetime", str(int(position)))
+            li.setProperty("totaltime", str(int(duration)))
+
+        url = _play_url({"kind": "episode", "tmdb_id": tmdb_id,
+                         "season": item["season"], "episode": item["episode"]})
+        li.setProperty("IsPlayable", "true" if url else "false")
+
+        context = []
+        if item.get("media_id"):
+            context.extend(_rate_context(item))
+            context.append((
+                _(30075),
+                "RunPlugin(plugin://{0}/?action=remove&media_id={1})".format(
+                    addon_id, item["media_id"])))
+        if context:
+            li.addContextMenuItems(context)
+
+        xbmcplugin.addDirectoryItem(handle, url, li, False)
+
+    xbmcplugin.endOfDirectory(handle, cacheToDisc=False)
+    log("listed {0} episodes for show {1}".format(len(items), tmdb_id))
 
 
 def build_directory(handle, kind="", show=None):
@@ -578,10 +699,18 @@ def route(argv):
     except ValueError:
         show = None
 
-    # Asking for TV without naming a show means the list of shows. Drilling in
-    # by passing show=<tmdb id> gives that show's episodes.
+    # Asking for TV without naming a show means the list of shows.
     if kind == "episode" and not show and which in ("progress", "watched"):
         build_shows(handle, which)
+        return
+
+    # ?list=show&show=<tmdb id> is the full season/episode grid.
+    if which == "show" and show:
+        try:
+            season = int(params["season"]) if "season" in params else None
+        except (ValueError, TypeError):
+            season = None
+        build_show_episodes(handle, show, season)
         return
 
     if which == "watched":
