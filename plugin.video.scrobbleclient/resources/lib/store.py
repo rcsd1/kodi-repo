@@ -226,6 +226,14 @@ class Store(object):
             path += "?season={0}".format(int(season))
         return self.call("GET", path, timeout=30)
 
+    def rate_episode(self, tmdb_id, season, episode, rating):
+        """Rate by identity rather than row id, so an episode that is not yet
+        in the store can be rated -- the store resolves or creates it."""
+        return self.call("POST", "/ratings", {
+            "identity": {"kind": "episode", "tmdb_id": int(tmdb_id),
+                         "season": int(season), "episode": int(episode)},
+            "rating": int(rating)}, queue_on_failure=True)
+
     def rate_show(self, tmdb_id, rating):
         return self.call("POST", "/ratings/show",
                          {"tmdb_id": int(tmdb_id), "rating": int(rating)},

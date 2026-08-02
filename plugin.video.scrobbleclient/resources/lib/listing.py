@@ -575,6 +575,13 @@ def build_show_episodes(handle, tmdb_id, season=None):
         except Exception as exc:
             log("episode info tag failed: {0}".format(exc), xbmc.LOGWARNING)
 
+        # Playcount via the property as well as the tag. If any setter in the
+        # block above is unavailable the tick silently goes missing, and a
+        # watched episode showing as unwatched is the worst kind of wrong.
+        li.setProperty("playcount", str(item.get("play_count") or 0))
+        if item.get("watched"):
+            li.setProperty("watched", "true")
+
         if position > 0 and duration:
             li.setProperty("resumetime", str(int(position)))
             li.setProperty("totaltime", str(int(duration)))
@@ -583,15 +590,25 @@ def build_show_episodes(handle, tmdb_id, season=None):
                          "season": item["season"], "episode": item["episode"]})
         li.setProperty("IsPlayable", "true" if url else "false")
 
-        context = []
+        # Rating is offered on every episode. Requiring an existing row meant
+        # you could only rate things already watched, which is backwards -- the
+        # store resolves or creates the row on demand.
+        context = [(
+            _(30084),
+            "RunPlugin(plugin://{0}/?action=rate_episode&show={1}"
+            "&season={2}&episode={3})".format(
+                addon_id, tmdb_id, item["season"], item["episode"]))]
+        if item.get("rating") and item.get("media_id"):
+            context.append((
+                _(30086),
+                "RunPlugin(plugin://{0}/?action=unrate&media_id={1})".format(
+                    addon_id, item["media_id"])))
         if item.get("media_id"):
-            context.extend(_rate_context(item))
             context.append((
                 _(30075),
                 "RunPlugin(plugin://{0}/?action=remove&media_id={1})".format(
                     addon_id, item["media_id"])))
-        if context:
-            li.addContextMenuItems(context)
+        li.addContextMenuItems(context)
 
         xbmcplugin.addDirectoryItem(handle, url, li, False)
 
@@ -686,6 +703,19 @@ def rate_item(media_id):
     if result is not None:
         xbmcgui.Dialog().notification("Scrobble", "{0}: {1}/10".format(
             _(30085), rating), xbmcgui.NOTIFICATION_INFO, 3000)
+    xbmc.executebuiltin("Container.Refresh")
+
+
+def rate_episode(tmdb_id, season, episode):
+    labels = [str(n) for n in range(10, 0, -1)]
+    choice = xbmcgui.Dialog().select(_(30085), labels)
+    if choice < 0:
+        return
+    rating = int(labels[choice])
+    if Store().rate_episode(tmdb_id, season, episode, rating) is not None:
+        xbmcgui.Dialog().notification(
+            "Scrobble", "{0}: {1}/10".format(_(30085), rating),
+            xbmcgui.NOTIFICATION_INFO, 3000)
     xbmc.executebuiltin("Container.Refresh")
 
 
@@ -792,6 +822,11 @@ def route(argv):
 
     if action == "unrate":
         unrate_item(params.get("media_id"))
+        return
+
+    if action == "rate_episode":
+        rate_episode(params.get("show"), params.get("season"),
+                     params.get("episode"))
         return
 
     if action == "rate_show":
