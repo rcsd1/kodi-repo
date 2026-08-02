@@ -214,8 +214,20 @@ def clear_queue():
         notify(_(30079), xbmcgui.NOTIFICATION_ERROR)
 
 
+def test_kodi_sync():
+    from . import kodisync
+    kodisync.diagnose()
+
+
+def kodi_sync():
+    from . import kodisync
+    kodisync.sync()
+
+
 ACTIONS = {
     "test": test_connection,
+    "test_kodi_sync": test_kodi_sync,
+    "kodi_sync": kodi_sync,
     "apply_threshold": apply_threshold,
     "stats": show_stats,
     "refresh_recs": refresh_recs,

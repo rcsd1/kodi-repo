@@ -177,6 +177,25 @@ class Scrobbler(xbmc.Player):
         except Exception as exc:
             log("seek failed: {0}".format(exc), xbmc.LOGERROR)
 
+    def _mirror_to_kodi(self, watched, position=0.0):
+        """
+        Mirror into Kodi's own database so TMDbHelper's episode view shows the
+        tick. Its watched flags come from Trakt with no hook for another
+        source, but Kodi's local record for the plugin path is what actually
+        draws the overlay.
+        """
+        if not _setting_bool("auto_kodi_sync", True) or not self.identity:
+            return
+        try:
+            from . import kodisync
+            kodisync.mark_one(
+                self.identity.get("kind"), self.identity.get("tmdb_id"),
+                self.identity.get("season"), self.identity.get("episode"),
+                watched=watched, position=position,
+                duration=self.duration or 0)
+        except Exception as exc:
+            log("kodi mirror failed: {0}".format(exc), xbmc.LOGWARNING)
+
     def _save(self, final=False):
         if not self.identity or self.delegated:
             return
@@ -187,6 +206,9 @@ class Scrobbler(xbmc.Player):
         if position < threshold and not final:
             return
         self.store.save_progress(self.identity, position, self.duration or None)
+        if final:
+            watched = bool(self.duration and position / self.duration >= 0.9)
+            self._mirror_to_kodi(watched, position)
         if final:
             log("saved {0} at {1:.1f}s of {2:.1f}s".format(
                 ident_mod.describe(self.identity), position, self.duration))

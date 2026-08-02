@@ -352,7 +352,10 @@ def _show_url(tmdb_id, season=None):
     if not tmdb_id:
         return ""
     season = season or 1
-    if _setting("show_opens", "tmdbhelper") == "builtin":
+    # TMDbHelper's view is the one worth having. Its watched flags come from
+    # Trakt, but Kodi's own local record for the play path is what actually
+    # draws the overlay -- and kodisync writes that, so the ticks appear.
+    if _setting("show_click_target", "tmdbhelper") != "tmdbhelper":
         return "plugin://{0}/?list=show&show={1}&season={2}".format(
             ADDON.getAddonInfo("id"), tmdb_id, season)
     return _tmdbhelper_url(tmdb_id, season)

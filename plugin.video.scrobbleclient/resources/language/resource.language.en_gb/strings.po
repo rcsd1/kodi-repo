@@ -233,6 +233,26 @@ msgctxt "#30087"
 msgid "Fetch missing artwork"
 msgstr ""
 
+msgctxt "#30098"
+msgid "Syncing watched state to Kodi"
+msgstr ""
+
+msgctxt "#30099"
+msgid "Test watched sync"
+msgstr ""
+
+msgctxt "#30100"
+msgid "Sync watched state to Kodi"
+msgstr ""
+
+msgctxt "#30101"
+msgid "Makes ticks appear in TMDbHelper's episode view"
+msgstr ""
+
+msgctxt "#30102"
+msgid "Keep Kodi in step automatically"
+msgstr ""
+
 msgctxt "#30095"
 msgid "Rate this show"
 msgstr ""

@@ -110,7 +110,7 @@
                     </constraints>
                     <control type="slider" format="integer"/>
                 </setting>
-                <setting id="show_opens" type="string" label="30091">
+                <setting id="show_click_target" type="string" label="30091">
                     <level>0</level>
                     <default>tmdbhelper</default>
                     <constraints>
@@ -187,6 +187,25 @@
                     <control type="button" format="action">
                         <close>false</close>
                     </control>
+                </setting>
+                <setting id="test_kodi_sync" type="action" label="30099" help="30101">
+                    <level>0</level>
+                    <data>RunPlugin(plugin://plugin.video.scrobbleclient/?action=test_kodi_sync)</data>
+                    <control type="button" format="action">
+                        <close>false</close>
+                    </control>
+                </setting>
+                <setting id="kodi_sync" type="action" label="30100" help="30101">
+                    <level>0</level>
+                    <data>RunPlugin(plugin://plugin.video.scrobbleclient/?action=kodi_sync)</data>
+                    <control type="button" format="action">
+                        <close>false</close>
+                    </control>
+                </setting>
+                <setting id="auto_kodi_sync" type="boolean" label="30102" help="30101">
+                    <level>0</level>
+                    <default>true</default>
+                    <control type="toggle"/>
                 </setting>
                 <setting id="fetch_artwork" type="action" label="30087" help="30046">
                     <level>0</level>
