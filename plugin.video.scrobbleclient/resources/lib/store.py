@@ -226,6 +226,11 @@ class Store(object):
             path += "?season={0}".format(int(season))
         return self.call("GET", path, timeout=30)
 
+    def rate_show(self, tmdb_id, rating):
+        return self.call("POST", "/ratings/show",
+                         {"tmdb_id": int(tmdb_id), "rating": int(rating)},
+                         queue_on_failure=True)
+
     def rate(self, identity, rating):
         return self.call("POST", "/ratings",
                          {"identity": identity, "rating": int(rating)},

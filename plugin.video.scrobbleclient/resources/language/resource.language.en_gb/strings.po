@@ -233,6 +233,18 @@ msgctxt "#30087"
 msgid "Fetch missing artwork"
 msgstr ""
 
+msgctxt "#30095"
+msgid "Rate this show"
+msgstr ""
+
+msgctxt "#30096"
+msgid "Open in TMDbHelper"
+msgstr ""
+
+msgctxt "#30097"
+msgid "Open episode list"
+msgstr ""
+
 msgctxt "#30091"
 msgid "Opening a show shows"
 msgstr ""

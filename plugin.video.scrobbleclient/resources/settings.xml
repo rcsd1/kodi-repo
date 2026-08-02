@@ -260,9 +260,9 @@
                         <heading>30051</heading>
                     </control>
                 </setting>
-                <setting id="info_url_tv" type="string" label="30052">
+                <setting id="tv_show_path" type="string" label="30052">
                     <level>2</level>
-                    <default>plugin://plugin.video.themoviedb.helper/?info=episodes&amp;tmdb_type=tv&amp;tmdb_id={tmdb_id}&amp;season={season}</default>
+                    <default>plugin://plugin.video.themoviedb.helper/?info=seasons&amp;tmdb_type=tv&amp;tmdb_id={tmdb_id}</default>
                     <constraints>
                         <allowempty>true</allowempty>
                     </constraints>

@@ -307,6 +307,36 @@ def _rate_context(item):
     return entries
 
 
+# Confirmed from a Kodi debug log of a working one-click navigation:
+#
+#   CGUIMediaWindow::GetDirectory (plugin://plugin.video.themoviedb.helper/
+#       ?info=seasons&tmdb_type=tv&tmdb_id=70785)
+#
+# A single GetDirectory. TMDbHelper then loads info=episodes&season=1 itself to
+# populate the view -- that is internal, not another click. info=details stops
+# on a summary page; info=episodes as an entry point skips the season chrome.
+DEFAULT_TV_PATH = ("plugin://plugin.video.themoviedb.helper/"
+                   "?info=seasons&tmdb_type=tv&tmdb_id={tmdb_id}")
+
+# Values written by earlier versions. Kodi keeps a user's saved setting when an
+# addon's default changes, so a stale entry here would silently override every
+# later fix. Anything matching these is treated as unset.
+SUPERSEDED_TV_PATHS = ("info=details", "info=episodes")
+
+
+def _tmdbhelper_url(tmdb_id, season=1):
+    template = _setting("tv_show_path", "") or DEFAULT_TV_PATH
+    if any(old in template for old in SUPERSEDED_TV_PATHS):
+        log("ignoring superseded TV path setting: {0}".format(template),
+            xbmc.LOGWARNING)
+        template = DEFAULT_TV_PATH
+    try:
+        return template.format(tmdb_id=tmdb_id, season=season)
+    except (KeyError, IndexError):
+        return template.replace("{tmdb_id}", str(tmdb_id)).replace(
+            "{season}", str(season))
+
+
 def _show_url(tmdb_id, season=None):
     """
     Where clicking a show goes.
@@ -325,15 +355,7 @@ def _show_url(tmdb_id, season=None):
     if _setting("show_opens", "tmdbhelper") == "builtin":
         return "plugin://{0}/?list=show&show={1}&season={2}".format(
             ADDON.getAddonInfo("id"), tmdb_id, season)
-    template = _setting(
-        "info_url_tv",
-        "plugin://plugin.video.themoviedb.helper/?info=episodes"
-        "&tmdb_type=tv&tmdb_id={tmdb_id}&season={season}")
-    try:
-        return template.format(tmdb_id=tmdb_id, season=season)
-    except (KeyError, IndexError):
-        return template.replace("{tmdb_id}", str(tmdb_id)).replace(
-            "{season}", str(season))
+    return _tmdbhelper_url(tmdb_id, season)
 
 
 def build_shows(handle, which="progress"):
@@ -426,9 +448,32 @@ def build_shows(handle, which="progress"):
             li.setProperty("UnWatchedEpisodes", str(remaining))
 
         li.setProperty("IsPlayable", "false")
+
+        # Show rows had no context menu at all, so there was nowhere to rate a
+        # series from. Both open routes are offered too, since whichever is not
+        # the default is otherwise unreachable.
+        tmdb_id = item.get("tmdb_id")
+        season = item.get("next_season") or 1
+        context = [
+            (_(30095),
+             "RunPlugin(plugin://{0}/?action=rate_show&show={1})".format(
+                 addon_id, tmdb_id)),
+            (_(30097),
+             "Container.Update(plugin://{0}/?list=show&show={1}&season={2})".format(
+                 addon_id, tmdb_id, season)),
+            (_(30096),
+             "Container.Update({0})".format(
+                 _tmdbhelper_url(tmdb_id, season))),
+        ]
+        if item.get("rating"):
+            context.insert(1, (
+                _(30086),
+                "RunPlugin(plugin://{0}/?action=unrate_show&show={1})".format(
+                    addon_id, tmdb_id)))
+        li.addContextMenuItems(context)
+
         xbmcplugin.addDirectoryItem(
-            handle, _show_url(item.get("tmdb_id"), item.get("next_season")),
-            li, True)
+            handle, _show_url(tmdb_id, item.get("next_season")), li, True)
 
     xbmcplugin.endOfDirectory(handle, cacheToDisc=False)
     log("listed {0} shows ({1})".format(len(items), which))
@@ -644,6 +689,24 @@ def rate_item(media_id):
     xbmc.executebuiltin("Container.Refresh")
 
 
+def rate_show(tmdb_id):
+    labels = [str(n) for n in range(10, 0, -1)]
+    choice = xbmcgui.Dialog().select(_(30085), labels)
+    if choice < 0:
+        return
+    rating = int(labels[choice])
+    if Store().rate_show(tmdb_id, rating) is not None:
+        xbmcgui.Dialog().notification(
+            "Scrobble", "{0}: {1}/10".format(_(30085), rating),
+            xbmcgui.NOTIFICATION_INFO, 3000)
+    xbmc.executebuiltin("Container.Refresh")
+
+
+def unrate_show(tmdb_id):
+    Store().call("DELETE", "/ratings/show/{0}".format(int(tmdb_id)))
+    xbmc.executebuiltin("Container.Refresh")
+
+
 def unrate_item(media_id):
     Store().call("DELETE", "/ratings/{0}".format(int(media_id)))
     xbmc.executebuiltin("Container.Refresh")
@@ -729,6 +792,14 @@ def route(argv):
 
     if action == "unrate":
         unrate_item(params.get("media_id"))
+        return
+
+    if action == "rate_show":
+        rate_show(params.get("show"))
+        return
+
+    if action == "unrate_show":
+        unrate_show(params.get("show"))
         return
 
     if action:
