@@ -233,6 +233,22 @@ msgctxt "#30087"
 msgid "Fetch missing artwork"
 msgstr ""
 
+msgctxt "#30091"
+msgid "Opening a show shows"
+msgstr ""
+
+msgctxt "#30092"
+msgid "TMDbHelper's episode view"
+msgstr ""
+
+msgctxt "#30093"
+msgid "Built-in episode list"
+msgstr ""
+
+msgctxt "#30094"
+msgid "Other seasons"
+msgstr ""
+
 msgctxt "#30089"
 msgid "Episode list not fetched yet - try again shortly"
 msgstr ""

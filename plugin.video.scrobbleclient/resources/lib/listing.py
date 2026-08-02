@@ -267,13 +267,7 @@ def build_recommended(handle, media_type=None, tier=None, genres=None,
         # A recommended show has no episode yet, so send it to TMDbHelper's
         # info screen rather than trying to play something unspecified.
         if media_type == "tv":
-            # info=seasons lands directly on the season/episode grid.
-            # info=details stops on a summary page needing another click.
-            url = _setting(
-                "info_url_tv",
-                "plugin://plugin.video.themoviedb.helper/?info=seasons"
-                "&tmdb_type=tv&tmdb_id={tmdb_id}").format(
-                    tmdb_id=item.get("tmdb_id"))
+            url = _show_url(item.get("tmdb_id"), 1)
             li.setProperty("IsPlayable", "false")
             xbmcplugin.addDirectoryItem(handle, url, li, True)
         else:
@@ -311,6 +305,35 @@ def _rate_context(item):
                         "RunPlugin(plugin://{0}/?action=unrate&media_id={1})".format(
                             addon_id, item["media_id"])))
     return entries
+
+
+def _show_url(tmdb_id, season=None):
+    """
+    Where clicking a show goes.
+
+    Default is TMDbHelper's episode view, because that is the layout worth
+    having and recreating it here produces a worse copy. The path is
+    info=episodes with a season -- info=seasons and info=details both stop a
+    page short and need another click.
+
+    The built-in list is the alternative for anyone who wants watched markers
+    from this store rather than from whatever TMDbHelper is reading.
+    """
+    if not tmdb_id:
+        return ""
+    season = season or 1
+    if _setting("show_opens", "tmdbhelper") == "builtin":
+        return "plugin://{0}/?list=show&show={1}&season={2}".format(
+            ADDON.getAddonInfo("id"), tmdb_id, season)
+    template = _setting(
+        "info_url_tv",
+        "plugin://plugin.video.themoviedb.helper/?info=episodes"
+        "&tmdb_type=tv&tmdb_id={tmdb_id}&season={season}")
+    try:
+        return template.format(tmdb_id=tmdb_id, season=season)
+    except (KeyError, IndexError):
+        return template.replace("{tmdb_id}", str(tmdb_id)).replace(
+            "{season}", str(season))
 
 
 def build_shows(handle, which="progress"):
@@ -403,14 +426,26 @@ def build_shows(handle, which="progress"):
             li.setProperty("UnWatchedEpisodes", str(remaining))
 
         li.setProperty("IsPlayable", "false")
-        # Straight to the full episode grid -- every season, marked up -- not
-        # a filtered list of only what has been watched.
-        url = "plugin://{0}/?list=show&show={1}".format(
-            addon_id, item.get("tmdb_id"))
-        xbmcplugin.addDirectoryItem(handle, url, li, True)
+        xbmcplugin.addDirectoryItem(
+            handle, _show_url(item.get("tmdb_id"), item.get("next_season")),
+            li, True)
 
     xbmcplugin.endOfDirectory(handle, cacheToDisc=False)
     log("listed {0} shows ({1})".format(len(items), which))
+
+
+def _default_season(items, seasons):
+    """
+    Which season to open on: whatever is in progress, else the first with
+    anything unwatched, else the first season.
+    """
+    for item in items:
+        if item.get("position_sec"):
+            return item["season"]
+    for item in items:
+        if not item.get("watched"):
+            return item["season"]
+    return seasons[0] if seasons else 1
 
 
 def build_show_episodes(handle, tmdb_id, season=None):
@@ -433,21 +468,15 @@ def build_show_episodes(handle, tmdb_id, season=None):
         return _message_directory(handle, _(30089))
 
     addon_id = ADDON.getAddonInfo("id")
-    xbmcplugin.setContent(handle, "episodes")
+    all_seasons = data.get("seasons", [])
 
-    # Season shortcuts when the whole show is being shown at once.
-    if season is None and len(data.get("seasons", [])) > 1:
-        for number in data["seasons"]:
-            li = xbmcgui.ListItem(label="{0} {1}".format(_(30090), number))
-            li.setArt({"icon": "DefaultTVShows.png",
-                       "poster": (items[0]["art"].get("poster")
-                                  or FALLBACK_ART)})
-            li.setProperty("IsPlayable", "false")
-            xbmcplugin.addDirectoryItem(
-                handle,
-                "plugin://{0}/?list=show&show={1}&season={2}".format(
-                    addon_id, tmdb_id, number),
-                li, True)
+    # One season at a time. Flattening every season into a single list, with
+    # season cards wedged on top, is not a browser -- it is a dump.
+    if season is None:
+        season = _default_season(items, all_seasons)
+        items = [i for i in items if i["season"] == season]
+
+    xbmcplugin.setContent(handle, "episodes")
 
     for item in items:
         label = "{0}x{1:02d}. {2}".format(
@@ -521,8 +550,25 @@ def build_show_episodes(handle, tmdb_id, season=None):
 
         xbmcplugin.addDirectoryItem(handle, url, li, False)
 
+    # Other seasons go last, so the episodes are what you land on.
+    for number in all_seasons:
+        if number == season:
+            continue
+        li = xbmcgui.ListItem(label="{0} {1}".format(_(30090), number))
+        li.setArt({"icon": "DefaultTVShows.png",
+                   "thumb": (items[0]["art"].get("poster")
+                             if items else FALLBACK_ART) or FALLBACK_ART})
+        li.setProperty("IsPlayable", "false")
+        li.setProperty("SpecialSort", "bottom")
+        xbmcplugin.addDirectoryItem(
+            handle,
+            "plugin://{0}/?list=show&show={1}&season={2}".format(
+                addon_id, tmdb_id, number),
+            li, True)
+
     xbmcplugin.endOfDirectory(handle, cacheToDisc=False)
-    log("listed {0} episodes for show {1}".format(len(items), tmdb_id))
+    log("listed {0} episodes of season {1} for show {2}".format(
+        len(items), season, tmdb_id))
 
 
 def build_directory(handle, kind="", show=None):
