@@ -270,7 +270,11 @@ def sync(limit=5000, show_progress=True):
     if dialog:
         dialog.create("Scrobble", _(30098))
 
-    counts = {"watched": 0, "progress": 0, "failed": 0}
+    # "failed" only counted rejected writes. Items skipped before the write --
+    # no tmdb id, no season/episode -- were invisible, so a run that never
+    # touched an item reported 0 failed and looked like a success.
+    counts = {"watched": 0, "progress": 0, "failed": 0,
+              "skipped_no_id": 0, "skipped_no_episode": 0}
     # Cache of real paths per (show, season), discovered from TMDbHelper rather
     # than assumed. Falls back to the template when a listing is unavailable.
     discovered = {}
@@ -292,9 +296,15 @@ def sync(limit=5000, show_progress=True):
         total = max(1, len(watched))
         for index, item in enumerate(watched):
             if not item.get("tmdb_id"):
+                counts["skipped_no_id"] += 1
+                log("skipped (no tmdb id): {0}".format(
+                    item.get("show_title") or item.get("title")))
                 continue
             if item["kind"] == "episode":
                 if item.get("season") is None or item.get("episode") is None:
+                    counts["skipped_no_episode"] += 1
+                    log("skipped (no season/episode): {0}".format(
+                        item.get("show_title")))
                     continue
                 path = path_for_episode(item["tmdb_id"], item["season"],
                                         item["episode"])
@@ -310,10 +320,22 @@ def sync(limit=5000, show_progress=True):
                 dialog.update(int(90.0 * index / total))
 
         for item in (store.in_progress(limit=limit) or {}).get("items", []):
-            if not item.get("tmdb_id") or not item.get("duration_sec"):
+            if not item.get("tmdb_id"):
+                counts["skipped_no_id"] += 1
+                log("progress skipped (no tmdb id): {0}".format(
+                    item.get("show_title") or item.get("title")))
+                continue
+            if not item.get("duration_sec"):
+                # No duration means no percentage, so no ring can be drawn.
+                counts["skipped_no_episode"] += 1
+                log("progress skipped (no duration): {0}".format(
+                    item.get("show_title") or item.get("title")))
                 continue
             if item["kind"] == "episode":
                 if item.get("season") is None or item.get("episode") is None:
+                    counts["skipped_no_episode"] += 1
+                    log("progress skipped (no season/episode): {0}".format(
+                        item.get("show_title")))
                     continue
                 path = path_for_episode(item["tmdb_id"], item["season"],
                                         item["episode"])
@@ -331,11 +353,21 @@ def sync(limit=5000, show_progress=True):
             dialog.close()
 
     log("kodi sync: {0}".format(counts))
-    xbmcgui.Dialog().notification(
+    skipped = counts["skipped_no_id"] + counts["skipped_no_episode"]
+    xbmcgui.Dialog().ok(
         "Scrobble",
-        "{0} watched, {1} in progress, {2} failed".format(
-            counts["watched"], counts["progress"], counts["failed"]),
-        xbmcgui.NOTIFICATION_INFO, 5000)
+        "Written to Kodi:\n"
+        "   {0} watched\n"
+        "   {1} in progress\n\n"
+        "Skipped:\n"
+        "   {2} with no TMDB id\n"
+        "   {3} with no season/episode or duration\n\n"
+        "Rejected by Kodi: {4}\n\n"
+        "Skipped items cannot be written -- there is no TMDbHelper path to "
+        "key them on. The Kodi log names each one.".format(
+            counts["watched"], counts["progress"],
+            counts["skipped_no_id"], counts["skipped_no_episode"],
+            counts["failed"]))
     return counts
 
 

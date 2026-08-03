@@ -438,6 +438,24 @@ def build_shows(handle, which="progress"):
             li.setProperty("TotalEpisodes", str(item["total_episodes"]))
         if item.get("watched_count") is not None:
             li.setProperty("WatchedEpisodes", str(item["watched_count"]))
+
+        # The ring around that badge is series progress. Episode-count
+        # properties alone do not produce it -- the skin draws it from a resume
+        # point, the same mechanism as the ring on an individual episode. So
+        # express "17 of 27 watched" as a resume point on the show row.
+        total = item.get("total_episodes") or 0
+        done = item.get("watched_count") or 0
+        if total and 0 < done < total:
+            try:
+                tag = li.getVideoInfoTag()
+                tag.setDuration(int(total))
+                tag.setResumePoint(float(done), float(total))
+            except Exception:
+                pass
+            li.setProperty("resumetime", str(done))
+            li.setProperty("totaltime", str(total))
+            li.setProperty("PercentPlayed",
+                           str(int(100.0 * done / total)))
         # Only the three properties Kodi defines. Inventing extras like
         # InProgressEpisodes made skins draw the in-progress clock instead of
         # the episode-count bubble.
