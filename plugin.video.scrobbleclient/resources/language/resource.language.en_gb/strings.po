@@ -237,8 +237,16 @@ msgctxt "#30098"
 msgid "Syncing watched state to Kodi"
 msgstr ""
 
+msgctxt "#30106"
+msgid "Clear TMDbHelper cache"
+msgstr ""
+
+msgctxt "#30107"
+msgid "A cached episode list hides anything synced since it was built"
+msgstr ""
+
 msgctxt "#30104"
-msgid "Mark watched as a full progress ring"
+msgid "Mark watched as a full progress ring (playcount does not persist)"
 msgstr ""
 
 msgctxt "#30105"

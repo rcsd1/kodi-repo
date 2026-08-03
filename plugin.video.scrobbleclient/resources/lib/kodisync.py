@@ -98,10 +98,18 @@ def auto_enabled() -> bool:
 
 
 def watched_as_resume() -> bool:
+    """
+    Default on, because playcount does not survive.
+
+    Files.SetFileDetails accepts playcount for a plugin path and then drops it
+    -- reading the same path back reports 0 every time. Resume does persist.
+    So a watched episode is written as a near-complete resume point, which is
+    the only marker that survives the round trip.
+    """
     try:
         return ADDON.getSettingBool("watched_as_resume")
     except Exception:
-        return False
+        return True
 
 
 def set_watched(path, watched=True, position=0.0, duration=0.0):
@@ -391,6 +399,7 @@ def sync(limit=5000, show_progress=True):
             dialog.close()
 
     log("kodi sync: {0}".format(counts))
+    cache = clear_tmdbhelper_cache()
     skipped = counts["skipped_no_id"] + counts["skipped_no_episode"]
     xbmcgui.Dialog().ok(
         "Scrobble",
@@ -401,12 +410,51 @@ def sync(limit=5000, show_progress=True):
         "   {2} with no TMDB id\n"
         "   {3} with no season/episode or duration\n\n"
         "Rejected by Kodi: {4}\n\n"
+        "Cleared {5} TMDbHelper cache files.\n\n"
         "Skipped items cannot be written -- there is no TMDbHelper path to "
         "key them on. The Kodi log names each one.".format(
             counts["watched"], counts["progress"],
             counts["skipped_no_id"], counts["skipped_no_episode"],
-            counts["failed"]))
+            counts["failed"], cache.get("removed", 0)))
     return counts
+
+
+def clear_tmdbhelper_cache():
+    """
+    Drop TMDbHelper's cached listings.
+
+    Its episode lists are cached, and a list built before a sync keeps showing
+    the state it had then -- confirmed by one show reporting resume=0/0 through
+    TMDbHelper while Kodi's own record for the identical path held a real
+    position. Only the databases are removed; settings are untouched.
+    """
+    import os
+    import xbmcvfs
+
+    base = xbmcvfs.translatePath(
+        "special://profile/addon_data/plugin.video.themoviedb.helper/")
+    if not os.path.isdir(base):
+        return {"removed": 0, "error": "TMDbHelper data folder not found"}
+
+    removed = []
+    for root, _dirs, files in os.walk(base):
+        for name in files:
+            lowered = name.lower()
+            # Caches only. settings.xml and anything else is left alone.
+            if not (lowered.endswith((".db", ".sqlite", ".cache"))
+                    or "cache" in lowered):
+                continue
+            if lowered == "settings.xml":
+                continue
+            try:
+                os.remove(os.path.join(root, name))
+                removed.append(name)
+            except Exception as exc:
+                log("could not remove {0}: {1}".format(name, exc),
+                    xbmc.LOGWARNING)
+
+    log("cleared {0} TMDbHelper cache files".format(len(removed)))
+    return {"removed": len(removed), "files": removed[:10]}
 
 
 # --------------------------------------------------------------------------
@@ -501,6 +549,8 @@ def sync_recent(limit=200):
     if written:
         _save_seen(seen)
         log("incremental kodi sync wrote {0} records".format(written))
+        # Without this the new state stays invisible behind a stale listing.
+        clear_tmdbhelper_cache()
     return {"written": written}
 
 

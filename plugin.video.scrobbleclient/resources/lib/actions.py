@@ -219,6 +219,20 @@ def test_kodi_sync():
     kodisync.diagnose()
 
 
+def clear_th_cache():
+    from . import kodisync
+    import xbmcgui
+    result = kodisync.clear_tmdbhelper_cache()
+    if result.get("error"):
+        xbmcgui.Dialog().ok("Scrobble", result["error"])
+    else:
+        xbmcgui.Dialog().ok(
+            "Scrobble",
+            "Removed {0} cached files.\n\n"
+            "Reopen the show to rebuild its episode list.".format(
+                result["removed"]))
+
+
 def inspect_paths():
     from . import kodisync
     kodisync.diagnose_paths()
@@ -234,6 +248,7 @@ ACTIONS = {
     "test_kodi_sync": test_kodi_sync,
     "kodi_sync": kodi_sync,
     "inspect_paths": inspect_paths,
+    "clear_th_cache": clear_th_cache,
     "apply_threshold": apply_threshold,
     "stats": show_stats,
     "refresh_recs": refresh_recs,
