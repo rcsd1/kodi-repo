@@ -205,17 +205,33 @@ def inspect_show(tmdb_id, season=1):
 
 
 def diagnose_paths(tmdb_id=None, season=1):
-    """Show the real item paths beside the one this addon writes."""
+    """
+    Show what Kodi holds for a chosen show, beside what was written.
+
+    Reports resume as well as playcount: a written resume point that reads back
+    as zero means the write is not landing where the listing reads, whereas one
+    that reads back correctly but draws no ring means the skin is not using it.
+    Those need opposite fixes.
+    """
+    store = Store()
+
     if not tmdb_id:
-        store = Store()
-        shows = (store.in_progress_shows(5) or {}).get("items", [])
-        if not shows:
-            shows = (store.watched_shows(5) or {}).get("items", [])
-        if not shows:
+        shows = (store.in_progress_shows(20) or {}).get("items", [])
+        watched = (store.watched_shows(20) or {}).get("items", [])
+        by_id = {}
+        for entry in shows + watched:
+            by_id.setdefault(entry["tmdb_id"], entry)
+        options = list(by_id.values())
+        if not options:
             xbmcgui.Dialog().ok("Scrobble", "Nothing watched yet to inspect.")
             return
-        tmdb_id = shows[0]["tmdb_id"]
-        season = shows[0].get("next_season") or 1
+        labels = ["{0}  (tmdb {1})".format(o.get("title") or "?", o["tmdb_id"])
+                  for o in options]
+        choice = xbmcgui.Dialog().select("Which show?", labels)
+        if choice < 0:
+            return
+        tmdb_id = options[choice]["tmdb_id"]
+        season = options[choice].get("next_season") or 1
 
     files, error = inspect_show(tmdb_id, season)
     lines = ["Show {0}, season {1}".format(tmdb_id, season), ""]
@@ -223,30 +239,52 @@ def diagnose_paths(tmdb_id=None, season=1):
     if error:
         lines.append("TMDbHelper listing failed:")
         lines.append(str(error.get("message", error)))
-        xbmcgui.Dialog().textviewer("Episode paths", "\n".join(lines))
+        xbmcgui.Dialog().textviewer("Episode state", "\n".join(lines))
         return
 
     if not files:
         lines.append("TMDbHelper returned no items for that season.")
-        xbmcgui.Dialog().textviewer("Episode paths", "\n".join(lines))
+        xbmcgui.Dialog().textviewer("Episode state", "\n".join(lines))
         return
 
-    lines.append("What this addon writes:")
+    lines.append("Path this addon writes:")
     lines.append("  " + episode_path(tmdb_id, season, 1))
     lines.append("")
-    lines.append("What TMDbHelper actually uses:")
-    for item in files[:4]:
-        lines.append("  S{0}E{1}  playcount={2}".format(
-            item.get("season"), item.get("episode"), item.get("playcount")))
-        lines.append("  " + str(item.get("file")))
+    lines.append("What Kodi reports for TMDbHelper's items:")
+    lines.append("")
+
+    mismatch = False
+    for item in files[:6]:
+        number = item.get("episode")
+        resume = item.get("resume") or {}
+        lines.append("  S{0}E{1}  playcount={2}  resume={3}/{4}".format(
+            item.get("season"), number, item.get("playcount"),
+            int(resume.get("position") or 0), int(resume.get("total") or 0)))
+        if number and item.get("file") != episode_path(tmdb_id, season, number):
+            mismatch = True
+            lines.append("    path differs:")
+            lines.append("    " + str(item.get("file")))
+
+    lines.append("")
+    if mismatch:
+        lines.append("PATH MISMATCH -- writes are going somewhere else.")
+    else:
+        lines.append("Paths match.")
         lines.append("")
+        lines.append("If playcount and resume are zero here, Kodi is not "
+                     "returning what was written and this route is dead. "
+                     "If they are correct but nothing is drawn, the skin is "
+                     "ignoring them.")
 
-    if files and files[0].get("file"):
-        same = files[0]["file"] == episode_path(
-            tmdb_id, season, files[0].get("episode") or 1)
-        lines.append("MATCH" if same else "MISMATCH -- this is why no ticks")
+    # Also read the same path directly, which bypasses TMDbHelper entirely.
+    direct = read_state(episode_path(tmdb_id, season, 1))
+    detail = (direct.get("result") or {}).get("filedetails") or {}
+    lines.append("")
+    lines.append("Reading the path directly (no TMDbHelper):")
+    lines.append("  playcount={0}  resume={1}".format(
+        detail.get("playcount"), detail.get("resume")))
 
-    xbmcgui.Dialog().textviewer("Episode paths", "\n".join(lines))
+    xbmcgui.Dialog().textviewer("Episode state", "\n".join(lines))
 
 
 # --------------------------------------------------------------------------
