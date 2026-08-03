@@ -292,7 +292,41 @@ def sync_watched(progress_dialog=True):
     return counts
 
 
-def scan():
+def scan(show_dialogs=True):
     """Ask Kodi to scan the library folder."""
     jsonrpc("VideoLibrary.Scan", {"directory": library_path(),
-                                  "showdialogs": True})
+                                  "showdialogs": show_dialogs})
+
+
+def maintain():
+    """
+    Keep the library current without anyone pressing anything.
+
+    Building is cheap when nothing changed -- existing files are skipped -- so
+    this can run on the same timer as the marking pass. A new show, or new
+    episodes of one already there, get files written and a scan triggered;
+    otherwise nothing happens.
+
+    Requiring a button press after starting a new show would be a poor trade
+    for the whole point of this, which is that watched state looks after
+    itself.
+    """
+    if not auto_enabled():
+        return {"built": 0, "marked": 0}
+
+    # Nothing to maintain until the library source has been set up.
+    if not library_episodes():
+        return {"built": 0, "marked": 0, "note": "library not scanned yet"}
+
+    built = build(progress_dialog=False)
+    if built.get("episodes"):
+        log("library gained {0} episode files -- scanning".format(
+            built["episodes"]))
+        scan(show_dialogs=False)
+        # The scan is asynchronous; marking happens on the next pass once
+        # Kodi has the new episodes.
+        return {"built": built["episodes"], "marked": 0}
+
+    marked = sync_watched(progress_dialog=False)
+    return {"built": 0, "marked": marked.get("marked", 0),
+            "resumed": marked.get("resumed", 0)}
