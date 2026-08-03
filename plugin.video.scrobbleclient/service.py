@@ -15,6 +15,10 @@ from resources.lib.store import Store, log
 TICK_S = 5
 FLUSH_INTERVAL_S = 300
 
+# Anything watched on another device reaches this one only through the store,
+# so Kodi's own database needs topping up or nothing shows a marker here.
+KODI_SYNC_INTERVAL_S = 600
+
 
 def main():
     monitor = xbmc.Monitor()
@@ -29,6 +33,7 @@ def main():
         log("store not configured -- open addon settings", xbmc.LOGWARNING)
 
     last_flush = 0.0
+    last_kodi_sync = 0.0
     while not monitor.abortRequested():
         try:
             if scrobbler.tracking:
@@ -38,6 +43,16 @@ def main():
                 last_flush = now
                 store.reload()
                 store.flush()
+
+            if (now - last_kodi_sync >= KODI_SYNC_INTERVAL_S
+                    and not scrobbler.tracking):
+                last_kodi_sync = now
+                try:
+                    from resources.lib import kodisync
+                    if kodisync.auto_enabled():
+                        kodisync.sync_recent()
+                except Exception as exc:
+                    log("kodi sync failed: {0}".format(exc), xbmc.LOGWARNING)
         except Exception as exc:
             log("service loop error: {0}".format(exc), xbmc.LOGERROR)
 

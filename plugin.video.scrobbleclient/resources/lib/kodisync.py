@@ -90,6 +90,13 @@ WATCHED_AS_RESUME_FRACTION = 0.995
 ASSUMED_RUNTIME_SEC = 45 * 60
 
 
+def auto_enabled() -> bool:
+    try:
+        return ADDON.getSettingBool("auto_kodi_sync")
+    except Exception:
+        return True
+
+
 def watched_as_resume() -> bool:
     try:
         return ADDON.getSettingBool("watched_as_resume")
@@ -330,6 +337,101 @@ def sync(limit=5000, show_progress=True):
             counts["watched"], counts["progress"], counts["failed"]),
         xbmcgui.NOTIFICATION_INFO, 5000)
     return counts
+
+
+# --------------------------------------------------------------------------
+# incremental sync
+# --------------------------------------------------------------------------
+
+def _state_file():
+    import os
+    import xbmcvfs
+    profile = xbmcvfs.translatePath(ADDON.getAddonInfo("profile"))
+    if not xbmcvfs.exists(profile):
+        xbmcvfs.mkdirs(profile)
+    return os.path.join(profile, "kodisync.json")
+
+
+def _load_seen():
+    import os
+    path = _state_file()
+    if not os.path.isfile(path):
+        return set()
+    try:
+        with open(path) as fh:
+            return set(json.load(fh).get("seen") or [])
+    except Exception:
+        return set()
+
+
+def _save_seen(seen):
+    try:
+        with open(_state_file(), "w") as fh:
+            json.dump({"seen": sorted(seen)[-8000:]}, fh)
+    except Exception as exc:
+        log("could not persist sync state: {0}".format(exc), xbmc.LOGWARNING)
+
+
+def _key(item):
+    if item.get("kind") == "episode":
+        return "e:{0}:{1}:{2}:{3}".format(
+            item.get("tmdb_id"), item.get("season"), item.get("episode"),
+            item.get("watched_at") or item.get("updated_at") or "")
+    return "m:{0}:{1}".format(
+        item.get("tmdb_id"), item.get("watched_at")
+        or item.get("updated_at") or "")
+
+
+def sync_recent(limit=200):
+    """
+    Pull whatever is new in the store and write it into Kodi.
+
+    Playback on the Mac goes store-side only -- mpv has no way to touch this
+    device's database, and when Kodi delegates to an external player its own
+    scrobbler deliberately stays out of the way. Without this, anything watched
+    elsewhere never gets a marker here.
+
+    Keyed on a per-item fingerprint so repeat passes are cheap.
+    """
+    store = Store()
+    if not store.configured:
+        return {"written": 0}
+
+    seen = _load_seen()
+    written = 0
+
+    for item in (store.watched(limit=limit) or {}).get("items", []):
+        key = _key(item)
+        if key in seen or not item.get("tmdb_id"):
+            continue
+        if item["kind"] == "episode" and (
+                item.get("season") is None or item.get("episode") is None):
+            continue
+        path = (episode_path(item["tmdb_id"], item["season"], item["episode"])
+                if item["kind"] == "episode" else movie_path(item["tmdb_id"]))
+        if "error" not in set_watched(path, watched=True):
+            seen.add(key)
+            written += 1
+
+    for item in (store.in_progress(limit=limit) or {}).get("items", []):
+        key = _key(item)
+        if key in seen or not item.get("tmdb_id") or not item.get("duration_sec"):
+            continue
+        if item["kind"] == "episode" and (
+                item.get("season") is None or item.get("episode") is None):
+            continue
+        path = (episode_path(item["tmdb_id"], item["season"], item["episode"])
+                if item["kind"] == "episode" else movie_path(item["tmdb_id"]))
+        if "error" not in set_watched(path, watched=False,
+                                      position=item.get("position_sec") or 0,
+                                      duration=item["duration_sec"]):
+            seen.add(key)
+            written += 1
+
+    if written:
+        _save_seen(seen)
+        log("incremental kodi sync wrote {0} records".format(written))
+    return {"written": written}
 
 
 def mark_one(kind, tmdb_id, season=None, episode=None, watched=True,
