@@ -53,6 +53,16 @@ def main():
                         kodisync.sync_recent()
                 except Exception as exc:
                     log("kodi sync failed: {0}".format(exc), xbmc.LOGWARNING)
+
+                # Library items are the only ones whose watched flags
+                # persist, so this is the pass that actually shows up.
+                try:
+                    from resources.lib import library
+                    if library.auto_enabled():
+                        library.sync_watched(progress_dialog=False)
+                except Exception as exc:
+                    log("library sync failed: {0}".format(exc),
+                        xbmc.LOGWARNING)
         except Exception as exc:
             log("service loop error: {0}".format(exc), xbmc.LOGERROR)
 

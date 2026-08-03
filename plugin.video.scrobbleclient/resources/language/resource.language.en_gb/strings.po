@@ -245,6 +245,42 @@ msgctxt "#30107"
 msgid "A cached episode list hides anything synced since it was built"
 msgstr ""
 
+msgctxt "#30108"
+msgid "Kodi library"
+msgstr ""
+
+msgctxt "#30109"
+msgid "Library folder"
+msgstr ""
+
+msgctxt "#30110"
+msgid "Building library"
+msgstr ""
+
+msgctxt "#30111"
+msgid "Marking watched episodes"
+msgstr ""
+
+msgctxt "#30112"
+msgid "Build library files"
+msgstr ""
+
+msgctxt "#30113"
+msgid "Scan library into Kodi"
+msgstr ""
+
+msgctxt "#30114"
+msgid "Mark watched in library"
+msgstr ""
+
+msgctxt "#30115"
+msgid "Watched flags persist for library items, unlike plugin paths"
+msgstr ""
+
+msgctxt "#30116"
+msgid "Show setup steps"
+msgstr ""
+
 msgctxt "#30104"
 msgid "Mark watched as a full progress ring (playcount does not persist)"
 msgstr ""
