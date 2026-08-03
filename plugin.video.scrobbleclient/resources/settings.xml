@@ -209,6 +209,11 @@
                         <close>false</close>
                     </control>
                 </setting>
+                <setting id="watched_as_resume" type="boolean" label="30104" help="30105">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                </setting>
                 <setting id="auto_kodi_sync" type="boolean" label="30102" help="30101">
                     <level>0</level>
                     <default>true</default>

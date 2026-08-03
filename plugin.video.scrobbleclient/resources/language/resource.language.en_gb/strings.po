@@ -237,6 +237,14 @@ msgctxt "#30098"
 msgid "Syncing watched state to Kodi"
 msgstr ""
 
+msgctxt "#30104"
+msgid "Mark watched as a full progress ring"
+msgstr ""
+
+msgctxt "#30105"
+msgid "TMDbHelper overrides playcount, but not resume - this is the only marker its view will show"
+msgstr ""
+
 msgctxt "#30103"
 msgid "Show episode paths"
 msgstr ""

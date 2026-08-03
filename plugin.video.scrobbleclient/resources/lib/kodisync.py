@@ -75,6 +75,28 @@ def movie_path(tmdb_id):
         return DEFAULT_PLAY_MOVIE.format(tmdb_id=tmdb_id)
 
 
+# TMDbHelper sets playcount on its own list items from Trakt, and a plugin's
+# value wins over Kodi's local record -- confirmed by writing playcount=1 to a
+# path that Files.GetDirectory then reported as playcount=0. So no write here
+# can produce a green tick in its view.
+#
+# Resume is different. Kodi supplies it for plugin paths and TMDbHelper does
+# not override it, which is why in-progress rings appear even with Trakt dead.
+#
+# So watched episodes can be written as a near-complete resume point instead:
+# a nearly-full ring rather than a tick, but it does distinguish watched from
+# unwatched at a glance, which is the actual need.
+WATCHED_AS_RESUME_FRACTION = 0.995
+ASSUMED_RUNTIME_SEC = 45 * 60
+
+
+def watched_as_resume() -> bool:
+    try:
+        return ADDON.getSettingBool("watched_as_resume")
+    except Exception:
+        return False
+
+
 def set_watched(path, watched=True, position=0.0, duration=0.0):
     """
     Write playcount and resume for a path Kodi is not tracking as a library
@@ -82,11 +104,17 @@ def set_watched(path, watched=True, position=0.0, duration=0.0):
     """
     params = {"file": path, "media": "video",
               "playcount": 1 if watched else 0}
-    if not watched and position and duration:
+
+    if watched and watched_as_resume():
+        total = float(duration) or float(ASSUMED_RUNTIME_SEC)
+        params["resume"] = {"position": total * WATCHED_AS_RESUME_FRACTION,
+                            "total": total}
+    elif not watched and position and duration:
         params["resume"] = {"position": float(position),
                             "total": float(duration)}
     elif watched:
         params["resume"] = {"position": 0.0, "total": 0.0}
+
     return jsonrpc("Files.SetFileDetails", params)
 
 
@@ -265,7 +293,8 @@ def sync(limit=5000, show_progress=True):
                                         item["episode"])
             else:
                 path = movie_path(item["tmdb_id"])
-            result = set_watched(path, watched=True)
+            result = set_watched(path, watched=True,
+                                 duration=item.get("duration_sec") or 0)
             if "error" in result:
                 counts["failed"] += 1
             else:
