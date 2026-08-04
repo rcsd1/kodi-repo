@@ -219,62 +219,6 @@ def test_kodi_sync():
     kodisync.diagnose()
 
 
-def library_help():
-    import xbmcgui
-    from . import library
-    xbmcgui.Dialog().textviewer("Kodi library setup", (
-        "Kodi drops playcount for plugin paths, so watched flags cannot be\n"
-        "written for items that exist only as plugin URLs. Library items are\n"
-        "different -- they have a real database id, and flags written against\n"
-        "one persist and render everywhere.\n\n"
-        "One-time setup:\n\n"
-        "1. Press 'Build library files'.\n"
-        "   Writes one .strm per episode into:\n"
-        "   {0}\n\n"
-        "2. Settings > Media > Library > Videos > Add videos\n"
-        "   Browse to that folder.\n"
-        "   Set content to 'TV shows'.\n"
-        "   Choose 'The Movie Database' as the scraper.\n"
-        "   Say yes to refresh.\n\n"
-        "3. Press 'Mark watched in library'.\n\n"
-        "Playing a library episode still goes through TMDbHelper and your\n"
-        "usual players -- each .strm contains a TMDbHelper play URL.\n\n"
-        "Re-run step 1 when you start a new show. Marking runs automatically\n"
-        "after that.".format(library.library_path())))
-
-
-def library_build():
-    import xbmcgui
-    from . import library
-    counts = library.build()
-    xbmcgui.Dialog().ok("Scrobble", (
-        "{0} shows, {1} episode files written.\n\n"
-        "{2} shows had no cached episode list yet -- run again later to "
-        "pick them up.\n\n"
-        "Next: add this folder as a TV Shows source and scan it.\n\n"
-        "{3}").format(counts["shows"], counts["episodes"],
-                      counts.get("no_episodes", 0), library.library_path()))
-
-
-def library_scan():
-    from . import library
-    library.scan()
-
-
-def library_mark():
-    import xbmcgui
-    from . import library
-    counts = library.sync_watched()
-    if counts.get("marked") or counts.get("resumed"):
-        xbmcgui.Dialog().ok("Scrobble", (
-            "Marked {0} episodes watched.\n"
-            "Set {1} resume points.\n\n"
-            "{2} episodes were not found in the library -- build and scan "
-            "again if that number is high.").format(
-                counts["marked"], counts["resumed"],
-                counts.get("not_in_library", 0)))
-
-
 def inspect_paths():
     from . import kodisync
     kodisync.diagnose_paths()
@@ -290,10 +234,6 @@ ACTIONS = {
     "test_kodi_sync": test_kodi_sync,
     "kodi_sync": kodi_sync,
     "inspect_paths": inspect_paths,
-    "library_help": library_help,
-    "library_build": library_build,
-    "library_scan": library_scan,
-    "library_mark": library_mark,
     "apply_threshold": apply_threshold,
     "stats": show_stats,
     "refresh_recs": refresh_recs,

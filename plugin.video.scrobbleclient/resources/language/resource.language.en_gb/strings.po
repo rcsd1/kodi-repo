@@ -245,6 +245,18 @@ msgctxt "#30107"
 msgid "A cached episode list hides anything synced since it was built"
 msgstr ""
 
+msgctxt "#30117"
+msgid "Include"
+msgstr ""
+
+msgctxt "#30118"
+msgid "Shows I am part-way through"
+msgstr ""
+
+msgctxt "#30119"
+msgid "Everything I have watched"
+msgstr ""
+
 msgctxt "#30108"
 msgid "Kodi library"
 msgstr ""

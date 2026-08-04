@@ -53,19 +53,6 @@ def main():
                         kodisync.sync_recent()
                 except Exception as exc:
                     log("kodi sync failed: {0}".format(exc), xbmc.LOGWARNING)
-
-                # Library items are the only ones whose watched flags
-                # persist, so this is the pass that actually shows up. It also
-                # writes files for shows started since the last pass, so a new
-                # show needs no intervention.
-                try:
-                    from resources.lib import library
-                    result = library.maintain()
-                    if result.get("built") or result.get("marked"):
-                        log("library: {0}".format(result))
-                except Exception as exc:
-                    log("library maintenance failed: {0}".format(exc),
-                        xbmc.LOGWARNING)
         except Exception as exc:
             log("service loop error: {0}".format(exc), xbmc.LOGERROR)
 
