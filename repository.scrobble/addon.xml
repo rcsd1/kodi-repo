@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <addon id="repository.scrobble"
        name="Scrobble Repository"
-       version="1.0.0"
+       version="1.0.1"
        provider-name="local">
     <extension point="xbmc.addon.repository" name="Scrobble Repository">
         <dir minversion="19.0.0">
-            <info compressed="false">https://raw.githubusercontent.com/GITHUB_USER/GITHUB_REPO/main/zips/addons.xml</info>
-            <checksum>https://raw.githubusercontent.com/GITHUB_USER/GITHUB_REPO/main/zips/addons.xml.md5</checksum>
-            <datadir zip="true">https://raw.githubusercontent.com/GITHUB_USER/GITHUB_REPO/main/zips/</datadir>
+            <info compressed="false">https://raw.githubusercontent.com/rcsd1/kodi-repo/main/zips/addons.xml</info>
+            <checksum>https://raw.githubusercontent.com/rcsd1/kodi-repo/main/zips/addons.xml.md5</checksum>
+            <datadir zip="true">https://raw.githubusercontent.com/rcsd1/kodi-repo/main/zips/</datadir>
             <hashes>false</hashes>
         </dir>
     </extension>

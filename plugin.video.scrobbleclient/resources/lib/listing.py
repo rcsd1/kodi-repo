@@ -139,7 +139,12 @@ def _apply_info(li, item, position, duration):
             if item.get(field):
                 unique[key] = str(item[field])
         if unique:
-            tag.setUniqueIDs(unique, "tmdb" if "tmdb" in unique else None)
+            if "tmdb" in unique:
+                tag.setUniqueIDs(unique, "tmdb")
+            else:
+                # Kodi 22 logs a deprecation warning for None passed to a
+                # setter, so leave the default-id argument out entirely.
+                tag.setUniqueIDs(unique)
 
         if duration:
             tag.setDuration(int(duration))

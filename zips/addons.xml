@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <addons>
-<addon id="plugin.video.scrobbleclient" name="Scrobble Client" version="1.24.0" provider-name="local">
+<addon id="plugin.video.scrobbleclient" name="Scrobble Client" version="1.24.1" provider-name="local">
     <requires>
         <import addon="xbmc.python" version="3.0.0" />
     </requires>
@@ -19,12 +19,12 @@
         <license>MIT</license>
     </extension>
 </addon>
-<addon id="repository.scrobble" name="Scrobble Repository" version="1.0.0" provider-name="local">
+<addon id="repository.scrobble" name="Scrobble Repository" version="1.0.1" provider-name="local">
     <extension point="xbmc.addon.repository" name="Scrobble Repository">
         <dir minversion="19.0.0">
-            <info compressed="false">https://raw.githubusercontent.com/GITHUB_USER/GITHUB_REPO/main/zips/addons.xml</info>
-            <checksum>https://raw.githubusercontent.com/GITHUB_USER/GITHUB_REPO/main/zips/addons.xml.md5</checksum>
-            <datadir zip="true">https://raw.githubusercontent.com/GITHUB_USER/GITHUB_REPO/main/zips/</datadir>
+            <info compressed="false">https://raw.githubusercontent.com/rcsd1/kodi-repo/main/zips/addons.xml</info>
+            <checksum>https://raw.githubusercontent.com/rcsd1/kodi-repo/main/zips/addons.xml.md5</checksum>
+            <datadir zip="true">https://raw.githubusercontent.com/rcsd1/kodi-repo/main/zips/</datadir>
             <hashes>false</hashes>
         </dir>
     </extension>

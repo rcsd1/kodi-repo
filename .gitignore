@@ -13,5 +13,6 @@ repo.conf
 # Noise
 .DS_Store
 __pycache__/
+.pytest_cache/
 *.pyc
 *.log

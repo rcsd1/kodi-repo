@@ -77,6 +77,7 @@ cp -R "$SRC" plugin.video.scrobbleclient
 rm -f plugin.video.scrobbleclient/test_client.py
 find plugin.video.scrobbleclient -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
 find plugin.video.scrobbleclient -name '*.pyc' -delete 2>/dev/null || true
+find plugin.video.scrobbleclient -name '.pytest_cache' -type d -exec rm -rf {} + 2>/dev/null || true
 
 # Keep the generator itself current -- it occasionally changes too.
 [ -f "$BUNDLE/kodi-repo/_generate.py" ] && cp "$BUNDLE/kodi-repo/_generate.py" .

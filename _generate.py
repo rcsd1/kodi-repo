@@ -130,6 +130,18 @@ def main():
     if not found:
         sys.exit("no addon folders found next to this script")
 
+    # A repository addon still carrying the GITHUB_USER placeholder points
+    # Kodi at nothing, and the only symptom is "could not connect to
+    # repository" on whichever device installs it next. That happened once:
+    # a sync from a fresh bundle put the unconfigured template back and the
+    # next build shipped it. Refuse rather than publish that again.
+    for name, path in found:
+        with open(os.path.join(path, "addon.xml"), encoding="utf-8") as fh:
+            text = fh.read()
+        if "GITHUB_USER" in text or "GITHUB_REPO" in text:
+            sys.exit("{0}/addon.xml still has the GITHUB_USER placeholder. "
+                     "Run ./configure.sh <github-user> <repo> first.".format(name))
+
     for name, path in found:
         root, addon_id, version = read_addon_xml(path)
         if not addon_id or not version:
